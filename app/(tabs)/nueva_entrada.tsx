@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     Alert, Image, KeyboardAvoidingView, Platform,
@@ -21,6 +22,7 @@ const emociones = [
 
 export default function NuevaEntrada() {
   const { colores } = useTema();
+  const router = useRouter();
   const [texto, setTexto] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [imagenes, setImagenes] = useState<string[]>([]);
@@ -80,36 +82,43 @@ export default function NuevaEntrada() {
     });
   };
 
-  const guardarEntrada = async () => {
+    const guardarEntrada = async () => {
     if (texto.trim().length === 0 && imagenes.length === 0 && !audioUri) {
-      Alert.alert('Entrada vacía', 'Escribe algo, agrega una imagen o graba un audio');
-      return;
+        Alert.alert('Entrada vacía', 'Escribe algo, agrega una imagen o graba un audio');
+        return;
     }
     setGuardando(true);
     const nuevaEntrada = {
-      id: Date.now().toString(),
-      texto,
-      fecha: new Date().toISOString(),
-      destacada: false,
-      imagenes,
-      audioUri,
-      emocion: emocionSeleccionada,
+        id: Date.now().toString(),
+        texto,
+        fecha: new Date().toISOString(),
+        destacada: false,
+        imagenes,
+        audioUri,
+        emocion: emocionSeleccionada,
     };
     try {
-      const guardadas = await AsyncStorage.getItem('entradas');
-      const entradas = guardadas ? JSON.parse(guardadas) : [];
-      entradas.unshift(nuevaEntrada);
-      await AsyncStorage.setItem('entradas', JSON.stringify(entradas));
-      const fechaInicio = await AsyncStorage.getItem('fechaInicio');
-      if (!fechaInicio) await AsyncStorage.setItem('fechaInicio', new Date().toISOString());
-      setTexto('');
-      setImagenes([]);
-      setAudioUri(null);
-      setEmocionSeleccionada(null);
-      Alert.alert('✨ Listo', 'Tu entrada fue guardada');
+        const guardadas = await AsyncStorage.getItem('entradas');
+        const entradas = guardadas ? JSON.parse(guardadas) : [];
+        entradas.unshift(nuevaEntrada);
+        await AsyncStorage.setItem('entradas', JSON.stringify(entradas));
+        const fechaInicio = await AsyncStorage.getItem('fechaInicio');
+        if (!fechaInicio) await AsyncStorage.setItem('fechaInicio', new Date().toISOString());
+        setTexto('');
+        setImagenes([]);
+        setAudioUri(null);
+        setEmocionSeleccionada(null);
+        Alert.alert(
+        '✨ Entrada guardada',
+        'La IA está analizando tu entrada...',
+        [
+            { text: 'Ver reflexión', onPress: () => router.push({ pathname: '/(tabs)/entrada-detalle', params: { id: nuevaEntrada.id, analizar: 'true' } } as any) },
+            { text: 'Después', style: 'cancel' }
+        ]
+        );
     } catch { Alert.alert('Error', 'No se pudo guardar la entrada'); }
     setGuardando(false);
-  };
+    };
 
   const hayContenido = texto.length > 0 || imagenes.length > 0 || !!audioUri;
 
