@@ -1,4 +1,5 @@
 import { useTema } from '@/contexts/ThemeContext';
+import { analizarEmocion, generarEtiquetas, generarReflexion } from '@/services/ia';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,8 +17,12 @@ type Entrada = {
 };
 
 export default function EntradaDetalle() {
+  const [reflexion, setReflexion] = useState<string | null>(null);
+  const [analisis, setAnalisis] = useState<{ nivelEstres: number; emocionPrincipal: string; resumen: string } | null>(null);
+  const [etiquetas, setEtiquetas] = useState<string[]>([]);
+  const [cargandoIA, setCargandoIA] = useState(false);
   const { colores } = useTema();
-  const { id } = useLocalSearchParams();
+  const { id, analizar } = useLocalSearchParams();
   const router = useRouter();
   const [entrada, setEntrada] = useState<Entrada | null>(null);
   const [editando, setEditando] = useState(false);
@@ -27,20 +32,28 @@ export default function EntradaDetalle() {
   const [verImagen, setVerImagen] = useState(false);
   const [imagenSeleccionada, setImagenSeleccionada] = useState<string | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      cargarEntrada();
-    }, [id])
-  );
-
   const cargarEntrada = async () => {
     const datos = await AsyncStorage.getItem('entradas');
     if (datos) {
       const entradas: Entrada[] = JSON.parse(datos);
       const encontrada = entradas.find((e) => e.id === id);
-      if (encontrada) setEntrada(encontrada);
+      if (encontrada) {
+        setEntrada(encontrada);
+        if ((encontrada as any).reflexion) setReflexion((encontrada as any).reflexion);
+        if ((encontrada as any).analisis) setAnalisis((encontrada as any).analisis);
+        if ((encontrada as any).etiquetas) setEtiquetas((encontrada as any).etiquetas);
+        if (analizar === 'true' && !(encontrada as any).reflexion) {
+          ejecutarAnalisisIA(encontrada);
+        }
+      }
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      cargarEntrada();
+    }, [id])
+  );
 
   const toggleDestacada = async () => {
     if (!entrada) return;
@@ -105,6 +118,36 @@ export default function EntradaDetalle() {
 
   const fecha = new Date(entrada.fecha);
   const palabras = entrada.texto.split(' ').filter(Boolean).length;
+
+  const ejecutarAnalisisIA = async (entradaActual: Entrada) => {
+  if (!entradaActual.texto) return;
+  setCargandoIA(true);
+  try {
+    const perfilDatos = await AsyncStorage.getItem('perfil');
+    const perfil = perfilDatos ? JSON.parse(perfilDatos) : { camino: 'todo' };
+    const [reflexionIA, analisisIA, etiquetasIA] = await Promise.all([
+      generarReflexion(entradaActual.texto, perfil.camino, entradaActual.emocion || null),
+      analizarEmocion(entradaActual.texto),
+      generarEtiquetas(entradaActual.texto),
+    ]);
+    setReflexion(reflexionIA);
+    setAnalisis(analisisIA);
+    setEtiquetas(etiquetasIA);
+    const datos = await AsyncStorage.getItem('entradas');
+    if (datos) {
+      const entradas: Entrada[] = JSON.parse(datos);
+      const nuevas = entradas.map((e) =>
+        e.id === entradaActual.id
+          ? { ...e, reflexion: reflexionIA, analisis: analisisIA, etiquetas: etiquetasIA }
+          : e
+      );
+      await AsyncStorage.setItem('entradas', JSON.stringify(nuevas));
+    }
+  } catch (error) {
+    Alert.alert('Error', 'No se pudo conectar con la IA. Verifica tu conexión.');
+  }
+  setCargandoIA(false);
+};
 
   return (
     <View style={[styles.container, { backgroundColor: colores.fondo }]}>
@@ -182,28 +225,39 @@ export default function EntradaDetalle() {
           <Text style={[styles.texto, { color: colores.texto }]}>{entrada.texto}</Text>
         </View>
 
-        {/* Reflexión sugerida */}
-        <TouchableOpacity style={[styles.reflexionCard, { backgroundColor: colores.acento + '15', borderColor: colores.acento + '30' }]}>
-          <Ionicons name="sparkles" size={20} color={colores.acento} />
-          <View style={styles.reflexionTexto}>
-            <Text style={[styles.reflexionTitulo, { color: colores.acento }]}>Reflexión sugerida</Text>
-            <Text style={[styles.reflexionSub, { color: colores.textoSecundario }]}>Conecta la IA para obtener reflexiones personalizadas</Text>
+        {/* Reflexión IA */}
+        <View style={[styles.reflexionCard, { backgroundColor: colores.acento + '15', borderColor: colores.acento + '30' }]}>
+          <View style={styles.reflexionHeader}>
+            <Ionicons name="sparkles" size={20} color={colores.acento} />
+            <Text style={[styles.reflexionTitulo, { color: colores.acento }]}>Reflexión de IA</Text>
+            {cargandoIA && <Text style={[styles.reflexionSub, { color: colores.textoSecundario }]}>Analizando...</Text>}
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colores.acento} />
-        </TouchableOpacity>
-
-        {/* Etiquetas */}
-        <View style={styles.seccion}>
-          <View style={styles.seccionHeader}>
-            <Ionicons name="pricetag-outline" size={16} color={colores.textoSecundario} />
-            <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Etiquetas</Text>
-          </View>
-          <View style={styles.etiquetasRow}>
-            <View style={[styles.etiqueta, { backgroundColor: colores.acento + '20' }]}>
-              <Text style={[styles.etiquetaTexto, { color: colores.acento }]}>Próximamente con IA</Text>
-            </View>
-          </View>
+          {reflexion ? (
+            <Text style={[styles.reflexionTextoContenido, { color: colores.texto }]}>{reflexion}</Text>
+          ) : cargandoIA ? (
+            <Text style={[styles.reflexionSub, { color: colores.textoSecundario }]}>La IA está generando tu reflexión personalizada... ✨</Text>
+          ) : (
+            <TouchableOpacity onPress={() => entrada && ejecutarAnalisisIA(entrada)}>
+              <Text style={[styles.reflexionSub, { color: colores.acento }]}>Toca para generar reflexión con IA ✨</Text>
+            </TouchableOpacity>
+          )}
         </View>
+
+        {etiquetas.length > 0 ? (
+          etiquetas.map((etiqueta) => (
+            <View key={etiqueta} style={[styles.etiqueta, { backgroundColor: colores.acento + '20' }]}>
+              <Text style={[styles.etiquetaTexto, { color: colores.acento }]}>{etiqueta}</Text>
+            </View>
+          ))
+        ) : cargandoIA ? (
+          <View style={[styles.etiqueta, { backgroundColor: colores.acento + '20' }]}>
+            <Text style={[styles.etiquetaTexto, { color: colores.acento }]}>Generando etiquetas...</Text>
+          </View>
+        ) : (
+          <View style={[styles.etiqueta, { backgroundColor: colores.acento + '20' }]}>
+            <Text style={[styles.etiquetaTexto, { color: colores.acento }]}>Sin etiquetas aún</Text>
+          </View>
+        )}
 
         {/* Archivos adjuntos */}
         <View style={styles.seccion}>
@@ -238,23 +292,16 @@ export default function EntradaDetalle() {
           )}
         </View>
 
-        {/* Análisis IA */}
-        <View style={[styles.iaCard, { backgroundColor: colores.acento + '15', borderColor: colores.acento + '30' }]}>
-          <View style={styles.iaHeader}>
-            <Ionicons name="bulb-outline" size={18} color={colores.acento} />
-            <Text style={[styles.iaTitulo, { color: colores.acento }]}>Análisis de IA</Text>
-          </View>
-          <View style={styles.iaContenido}>
-            <Text style={[styles.iaTexto, { color: colores.textoSecundario }]}>
-              Conecta la IA para obtener análisis emocional, nivel de estrés y recomendaciones personalizadas.
+        <Text style={[styles.iaTexto, { color: colores.textoSecundario }]}>
+          {analisis ? analisis.resumen : cargandoIA ? 'Analizando tus emociones...' : 'Toca para analizar con IA'}
+        </Text>
+        <View style={styles.nivelContainer}>
+          <View style={[styles.nivelCirculo, { borderColor: analisis ? '#7c6af7' : colores.acento }]}>
+            <Text style={[styles.nivelNumero, { color: colores.acento }]}>
+              {analisis ? analisis.nivelEstres : cargandoIA ? '...' : '?'}
             </Text>
-            <View style={styles.nivelContainer}>
-              <View style={[styles.nivelCirculo, { borderColor: colores.acento }]}>
-                <Text style={[styles.nivelNumero, { color: colores.acento }]}>?</Text>
-              </View>
-              <Text style={[styles.nivelLabel, { color: colores.textoSecundario }]}>Nivel de{'\n'}estrés</Text>
-            </View>
           </View>
+          <Text style={[styles.nivelLabel, { color: colores.textoSecundario }]}>Nivel de{'\n'}estrés</Text>
         </View>
 
         {/* Fecha creación */}
@@ -449,4 +496,6 @@ const styles = StyleSheet.create({
   modalCancelarTexto: { fontWeight: 'bold' },
   modalGuardar: { flex: 1, backgroundColor: '#7c6af7', borderRadius: 12, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
   modalGuardarTexto: { color: '#fff', fontWeight: 'bold' },
+  reflexionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+ reflexionTextoContenido: { fontSize: 14, lineHeight: 22 },
 });
