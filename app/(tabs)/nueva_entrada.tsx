@@ -1,3 +1,4 @@
+import ModoGuiado from '@/components/ModoGuiado';
 import { useTema } from '@/contexts/ThemeContext';
 import { generarReflexion } from '@/services/ia';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,7 @@ const emociones = [
 ];
 
 export default function NuevaEntrada() {
+  const [modalGuiado, setModalGuiado] = useState(false);
   const { colores } = useTema();
   const router = useRouter();
   const [texto, setTexto] = useState('');
@@ -242,7 +244,18 @@ export default function NuevaEntrada() {
             <Text style={styles.iaBotonTexto}>Probar IA</Text>
           </TouchableOpacity>
         </View>
-
+        {/* Botón modo guiado */}
+        <TouchableOpacity
+          style={[styles.botonGuiado, { backgroundColor: colores.fondoTarjeta, borderColor: colores.acento + '40' }]}
+          onPress={() => setModalGuiado(true)}
+        >
+          <Ionicons name="compass-outline" size={20} color={colores.acento} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.botonGuiadoTitulo, { color: colores.texto }]}>Modo guiado</Text>
+            <Text style={[styles.botonGuiadoSub, { color: colores.textoSecundario }]}>La IA te ayuda a escribir paso a paso</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colores.acento} />
+        </TouchableOpacity>
         {/* Botones multimedia */}
         <View style={styles.botonesMultimedia}>
           <TouchableOpacity style={[styles.btnMedia, { backgroundColor: colores.fondoTarjeta }]} onPress={agregarImagen}>
@@ -352,7 +365,12 @@ export default function NuevaEntrada() {
           </View>
         </View>
       </Modal>
-
+      <ModoGuiado
+        visible={modalGuiado}
+        emocion={emocionSeleccionada}
+        onCerrar={() => setModalGuiado(false)}
+        onEntradaGenerada={(texto) => setTexto(texto)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -413,4 +431,7 @@ const styles = StyleSheet.create({
   chatTextInput: { fontSize: 15, textAlignVertical: 'top', minHeight: 60 },
   chatBoton: { borderRadius: 14, padding: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
   chatBotonTexto: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  botonGuiado: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 14, marginBottom: 16, borderWidth: 1.5 },
+  botonGuiadoTitulo: { fontSize: 14, fontWeight: 'bold' },
+  botonGuiadoSub: { fontSize: 12, marginTop: 2 },
 });

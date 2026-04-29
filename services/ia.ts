@@ -178,3 +178,32 @@ export const calcularRachaReal = (entradas: { fecha: string }[]): number => {
   }
   return racha;
 };
+export const generarPreguntaGuiada = async (
+  emocion: string | null,
+  camino: string,
+  respuestasAnteriores: string[]
+): Promise<string> => {
+  const sistema = `${getSistemaEspiritual(camino)} También eres un terapeuta experto en escritura reflexiva. Tu objetivo es hacer preguntas profundas y empáticas que ayuden al usuario a explorar sus emociones y pensamientos. Haz UNA sola pregunta corta y poderosa.`;
+  
+  const contexto = respuestasAnteriores.length > 0
+    ? `El usuario ha respondido lo siguiente:\n${respuestasAnteriores.map((r, i) => `Respuesta ${i + 1}: "${r}"`).join('\n')}\n\nBasa tu siguiente pregunta en estas respuestas.`
+    : `El usuario se siente: ${emocion || 'no especificado'}`;
+
+  const prompt = `${contexto}\n\nHaz UNA pregunta reflexiva y empática para ayudar al usuario a explorar sus pensamientos y emociones más profundamente. La pregunta debe ser corta, directa y poderosa. Solo escribe la pregunta, sin explicaciones.`;
+  
+  return llamarClaude(prompt, sistema);
+};
+
+export const convertirRespuestasAEntrada = async (
+  preguntas: string[],
+  respuestas: string[],
+  camino: string
+): Promise<string> => {
+  const sistema = `${getSistemaEspiritual(camino)} También eres un escritor experto que transforma conversaciones en entradas de diario hermosas y coherentes.`;
+  
+  const dialogo = preguntas.map((p, i) => `Pregunta: ${p}\nRespuesta: ${respuestas[i] || ''}`).join('\n\n');
+  
+  const prompt = `Transforma esta conversación en una entrada de diario personal hermosa, en primera persona, que fluya naturalmente. Mantén las emociones y pensamientos originales del usuario:\n\n${dialogo}\n\nEscribe solo la entrada de diario, sin títulos ni explicaciones.`;
+  
+  return llamarClaude(prompt, sistema);
+};
