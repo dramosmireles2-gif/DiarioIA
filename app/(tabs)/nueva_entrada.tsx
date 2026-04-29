@@ -1,4 +1,5 @@
 import { useTema } from '@/contexts/ThemeContext';
+import { generarReflexion } from '@/services/ia';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
@@ -6,9 +7,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-    Alert, Image, KeyboardAvoidingView, Platform,
-    ScrollView, StyleSheet, Text, TextInput,
-    TouchableOpacity, View,
+  Alert, Image, KeyboardAvoidingView, Modal, Platform,
+  ScrollView, StyleSheet, Text, TextInput,
+  TouchableOpacity, View,
 } from 'react-native';
 
 const emociones = [
@@ -32,15 +33,15 @@ export default function NuevaEntrada() {
   const [reproduciendo, setReproduciendo] = useState(false);
   const [sonido, setSonido] = useState<Audio.Sound | null>(null);
   const [emocionSeleccionada, setEmocionSeleccionada] = useState<string | null>(null);
+  const [modalIA, setModalIA] = useState(false);
+  const [chatIA, setChatIA] = useState('');
+  const [respuestaIA, setRespuestaIA] = useState('');
+  const [cargandoChatIA, setCargandoChatIA] = useState(false);
 
   const agregarImagen = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permiso.granted) { Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería'); return; }
-    const resultado = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      quality: 0.7,
-    });
+    const resultado = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, quality: 0.7 });
     if (!resultado.canceled) setImagenes([...imagenes, ...resultado.assets.map((a) => a.uri)]);
   };
 
@@ -82,43 +83,57 @@ export default function NuevaEntrada() {
     });
   };
 
-    const guardarEntrada = async () => {
+  const guardarEntrada = async () => {
     if (texto.trim().length === 0 && imagenes.length === 0 && !audioUri) {
-        Alert.alert('Entrada vacía', 'Escribe algo, agrega una imagen o graba un audio');
-        return;
+      Alert.alert('Entrada vacía', 'Escribe algo, agrega una imagen o graba un audio');
+      return;
     }
     setGuardando(true);
     const nuevaEntrada = {
-        id: Date.now().toString(),
-        texto,
-        fecha: new Date().toISOString(),
-        destacada: false,
-        imagenes,
-        audioUri,
-        emocion: emocionSeleccionada,
+      id: Date.now().toString(),
+      texto,
+      fecha: new Date().toISOString(),
+      destacada: false,
+      imagenes,
+      audioUri,
+      emocion: emocionSeleccionada,
     };
     try {
-        const guardadas = await AsyncStorage.getItem('entradas');
-        const entradas = guardadas ? JSON.parse(guardadas) : [];
-        entradas.unshift(nuevaEntrada);
-        await AsyncStorage.setItem('entradas', JSON.stringify(entradas));
-        const fechaInicio = await AsyncStorage.getItem('fechaInicio');
-        if (!fechaInicio) await AsyncStorage.setItem('fechaInicio', new Date().toISOString());
-        setTexto('');
-        setImagenes([]);
-        setAudioUri(null);
-        setEmocionSeleccionada(null);
-        Alert.alert(
+      const guardadas = await AsyncStorage.getItem('entradas');
+      const entradas = guardadas ? JSON.parse(guardadas) : [];
+      entradas.unshift(nuevaEntrada);
+      await AsyncStorage.setItem('entradas', JSON.stringify(entradas));
+      const fechaInicio = await AsyncStorage.getItem('fechaInicio');
+      if (!fechaInicio) await AsyncStorage.setItem('fechaInicio', new Date().toISOString());
+      setTexto('');
+      setImagenes([]);
+      setAudioUri(null);
+      setEmocionSeleccionada(null);
+      Alert.alert(
         '✨ Entrada guardada',
         'La IA está analizando tu entrada...',
         [
-            { text: 'Ver reflexión', onPress: () => router.push({ pathname: '/(tabs)/entrada-detalle', params: { id: nuevaEntrada.id, analizar: 'true' } } as any) },
-            { text: 'Después', style: 'cancel' }
+          { text: 'Ver reflexión', onPress: () => router.push({ pathname: '/(tabs)/entrada-detalle', params: { id: nuevaEntrada.id, analizar: 'true' } } as any) },
+          { text: 'Después', style: 'cancel' }
         ]
-        );
+      );
     } catch { Alert.alert('Error', 'No se pudo guardar la entrada'); }
     setGuardando(false);
-    };
+  };
+
+  const preguntarIA = async () => {
+    if (!chatIA.trim()) return;
+    setCargandoChatIA(true);
+    try {
+      const perfilDatos = await AsyncStorage.getItem('perfil');
+      const perfil = perfilDatos ? JSON.parse(perfilDatos) : { camino: 'todo' };
+      const respuesta = await generarReflexion(chatIA, perfil.camino, null);
+      setRespuestaIA(respuesta);
+    } catch {
+      setRespuestaIA('No se pudo conectar con la IA. Verifica tu conexión.');
+    }
+    setCargandoChatIA(false);
+  };
 
   const hayContenido = texto.length > 0 || imagenes.length > 0 || !!audioUri;
 
@@ -131,13 +146,16 @@ export default function NuevaEntrada() {
 
         {/* Header */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={[styles.titulo, { color: colores.texto }]}>¿Cómo te sientes hoy?</Text>
             <Text style={[styles.subtitulo, { color: colores.textoSecundario }]}>
               Escribe, reflexiona y entiende tus emociones 💜
             </Text>
           </View>
-          <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colores.fondoTarjeta }]}>
+          <TouchableOpacity
+            style={[styles.headerBtn, { backgroundColor: colores.fondoTarjeta }]}
+            onPress={() => setModalIA(true)}
+          >
             <Ionicons name="sparkles-outline" size={22} color={colores.acento} />
           </TouchableOpacity>
         </View>
@@ -222,7 +240,10 @@ export default function NuevaEntrada() {
             <Text style={[styles.iaTitulo, { color: colores.texto }]}>La IA puede ayudarte a reflexionar</Text>
             <Text style={[styles.iaSubtitulo, { color: colores.textoSecundario }]}>Analiza tus emociones, te da ideas y te acompaña.</Text>
           </View>
-          <TouchableOpacity style={[styles.iaBoton, { backgroundColor: colores.acento }]}>
+          <TouchableOpacity
+            style={[styles.iaBoton, { backgroundColor: colores.acento }]}
+            onPress={() => setModalIA(true)}
+          >
             <Ionicons name="sparkles" size={14} color="#fff" />
             <Text style={styles.iaBotonTexto}>Probar IA</Text>
           </TouchableOpacity>
@@ -231,18 +252,18 @@ export default function NuevaEntrada() {
         {/* Botones multimedia */}
         <View style={styles.botonesMultimedia}>
           <TouchableOpacity style={[styles.btnMedia, { backgroundColor: colores.fondoTarjeta }]} onPress={agregarImagen}>
-            <Ionicons name="image-outline" size={24} color={colores.acento} />
-            <View>
-              <Text style={[styles.btnMediaTitulo, { color: colores.texto }]}>Galería</Text>
-              <Text style={[styles.btnMediaSub, { color: colores.textoSecundario }]}>Foto del momento</Text>
+            <Ionicons name="image-outline" size={22} color={colores.acento} />
+            <View style={styles.btnMediaTexto}>
+              <Text style={[styles.btnMediaTitulo, { color: colores.texto }]} numberOfLines={1}>Galería</Text>
+              <Text style={[styles.btnMediaSub, { color: colores.textoSecundario }]} numberOfLines={1}>Foto del momento</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.btnMedia, { backgroundColor: colores.fondoTarjeta }]} onPress={tomarFoto}>
-            <Ionicons name="camera-outline" size={24} color={colores.acento} />
-            <View>
-              <Text style={[styles.btnMediaTitulo, { color: colores.texto }]}>Cámara</Text>
-              <Text style={[styles.btnMediaSub, { color: colores.textoSecundario }]}>Captura algo</Text>
+            <Ionicons name="camera-outline" size={22} color={colores.acento} />
+            <View style={styles.btnMediaTexto}>
+              <Text style={[styles.btnMediaTitulo, { color: colores.texto }]} numberOfLines={1}>Cámara</Text>
+              <Text style={[styles.btnMediaSub, { color: colores.textoSecundario }]} numberOfLines={1}>Captura algo</Text>
             </View>
           </TouchableOpacity>
 
@@ -250,12 +271,12 @@ export default function NuevaEntrada() {
             style={[styles.btnMedia, { backgroundColor: grabando ? '#ff6b6b22' : colores.fondoTarjeta }]}
             onPress={grabando ? detenerGrabacion : iniciarGrabacion}
           >
-            <Ionicons name={grabando ? 'stop-circle-outline' : 'mic-outline'} size={24} color={grabando ? '#ff6b6b' : colores.acento} />
-            <View>
-              <Text style={[styles.btnMediaTitulo, { color: grabando ? '#ff6b6b' : colores.texto }]}>
+            <Ionicons name={grabando ? 'stop-circle-outline' : 'mic-outline'} size={22} color={grabando ? '#ff6b6b' : colores.acento} />
+            <View style={styles.btnMediaTexto}>
+              <Text style={[styles.btnMediaTitulo, { color: grabando ? '#ff6b6b' : colores.texto }]} numberOfLines={1}>
                 {grabando ? 'Detener' : 'Grabar'}
               </Text>
-              <Text style={[styles.btnMediaSub, { color: colores.textoSecundario }]}>Tu voz, tu historia</Text>
+              <Text style={[styles.btnMediaSub, { color: colores.textoSecundario }]} numberOfLines={1}>Tu voz</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -277,6 +298,67 @@ export default function NuevaEntrada() {
         </View>
 
       </ScrollView>
+
+      {/* Modal chat IA */}
+      <Modal visible={modalIA} animationType="slide" transparent>
+        <View style={styles.modalFondo}>
+          <View style={[styles.modalIA, { backgroundColor: colores.fondoTarjeta }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
+            <View style={styles.modalIAHeader}>
+              <Ionicons name="sparkles" size={20} color={colores.acento} />
+              <Text style={[styles.modalIATitulo, { color: colores.texto }]}>Asistente de IA</Text>
+              <TouchableOpacity onPress={() => { setModalIA(false); setRespuestaIA(''); setChatIA(''); }}>
+                <Ionicons name="close" size={24} color={colores.textoSecundario} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalIASub, { color: colores.textoSecundario }]}>
+              Cuéntame cómo te sientes y te ayudo a reflexionar ✨
+            </Text>
+
+            {respuestaIA !== '' && (
+              <ScrollView style={[styles.respuestaIA, { backgroundColor: colores.fondo }]}>
+                <Text style={[styles.respuestaIATexto, { color: colores.texto }]}>{respuestaIA}</Text>
+                <TouchableOpacity
+                  style={[styles.usarRespuesta, { backgroundColor: colores.acento }]}
+                  onPress={() => {
+                    setTexto(respuestaIA);
+                    setModalIA(false);
+                    setRespuestaIA('');
+                    setChatIA('');
+                  }}
+                >
+                  <Text style={styles.usarRespuestaTexto}>Usar como entrada</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+
+            <View style={[styles.chatInput, { backgroundColor: colores.fondo }]}>
+              <TextInput
+                style={[styles.chatTextInput, { color: colores.texto }]}
+                placeholder="¿Cómo te sientes hoy?"
+                placeholderTextColor={colores.textoSecundario}
+                value={chatIA}
+                onChangeText={setChatIA}
+                multiline
+                maxLength={500}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.chatBoton, { backgroundColor: cargandoChatIA || !chatIA.trim() ? colores.fondoTarjeta : colores.acento }]}
+              onPress={preguntarIA}
+              disabled={cargandoChatIA || !chatIA.trim()}
+            >
+              <Ionicons name="sparkles" size={18} color="#fff" />
+              <Text style={styles.chatBotonTexto}>
+                {cargandoChatIA ? 'Reflexionando...' : 'Pedir reflexión'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </KeyboardAvoidingView>
   );
 }
@@ -314,12 +396,27 @@ const styles = StyleSheet.create({
   iaBoton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
   iaBotonTexto: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   botonesMultimedia: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  btnMedia: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 14, padding: 12 },
-  btnMediaTitulo: { fontSize: 12, fontWeight: 'bold' },
-  btnMediaSub: { fontSize: 10, marginTop: 2 },
+  btnMedia: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 14, padding: 10, overflow: 'hidden', minWidth: 0 },
+  btnMediaTexto: { flex: 1, minWidth: 0 },
+  btnMediaTitulo: { fontSize: 11, fontWeight: 'bold' },
+  btnMediaSub: { fontSize: 9, marginTop: 1 },
   boton: { backgroundColor: '#7c6af7', borderRadius: 16, padding: 18, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 12 },
   botonDesactivado: { opacity: 0.4 },
   botonTexto: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   privacidad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 8 },
   privacidadTexto: { fontSize: 12 },
+  modalFondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalIA: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '85%' },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  modalIAHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  modalIATitulo: { flex: 1, fontSize: 18, fontWeight: 'bold' },
+  modalIASub: { fontSize: 14, marginBottom: 16, lineHeight: 20 },
+  respuestaIA: { borderRadius: 16, padding: 16, marginBottom: 16, maxHeight: 200 },
+  respuestaIATexto: { fontSize: 14, lineHeight: 22, marginBottom: 12 },
+  usarRespuesta: { borderRadius: 12, padding: 10, alignItems: 'center' },
+  usarRespuestaTexto: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  chatInput: { borderRadius: 16, padding: 14, marginBottom: 12, minHeight: 80 },
+  chatTextInput: { fontSize: 15, textAlignVertical: 'top', minHeight: 60 },
+  chatBoton: { borderRadius: 14, padding: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  chatBotonTexto: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
 });

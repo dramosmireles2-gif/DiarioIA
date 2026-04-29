@@ -83,12 +83,15 @@ export default function Perfil() {
     if (entradasDatos.length === 0) return;
     setCargandoInsights(true);
     try {
+      const perfilDatos = await AsyncStorage.getItem('perfil');
+      const perfil = perfilDatos ? JSON.parse(perfilDatos) : { camino: 'todo' };
       const insightsIA = await generarInsights(
         entradasDatos.map((e: any) => ({
           texto: e.texto,
           emocion: e.emocion,
           fecha: e.fecha,
-        }))
+        })),
+        perfil.camino
       );
       setInsights(insightsIA);
     } catch (error) {

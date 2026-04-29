@@ -1,11 +1,12 @@
 import { useTema } from '@/contexts/ThemeContext';
+import { generarResumenMensual } from '@/services/ia';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-    Modal, ScrollView, SectionList, StyleSheet, Text,
-    TextInput, TouchableOpacity, View
+  Modal, ScrollView, SectionList, StyleSheet, Text,
+  TextInput, TouchableOpacity, View,
 } from 'react-native';
 
 type Entrada = {
@@ -36,6 +37,10 @@ export default function MisEntradas() {
   const [filtroEmocion, setFiltroEmocion] = useState<string | null>(null);
   const [filtroDestacadas, setFiltroDestacadas] = useState(false);
   const [filtroOrden, setFiltroOrden] = useState<'recientes' | 'antiguas' | 'az'>('recientes');
+  const [modalResumen, setModalResumen] = useState(false);
+  const [resumenTexto, setResumenTexto] = useState('');
+  const [cargandoResumen, setCargandoResumen] = useState(false);
+  const [mesResumen, setMesResumen] = useState('');
 
   const cargarEntradas = async () => {
     const datos = await AsyncStorage.getItem('entradas');
@@ -51,13 +56,11 @@ export default function MisEntradas() {
     setEntradas(ordenadas);
   };
 
-  const formatearMes = (fechaISO: string) => {
-    return new Date(fechaISO).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
-  };
+  const formatearMes = (fechaISO: string) =>
+    new Date(fechaISO).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
 
-  const formatearFechaCorta = (fechaISO: string) => {
-    return new Date(fechaISO).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
-  };
+  const formatearFechaCorta = (fechaISO: string) =>
+    new Date(fechaISO).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const primerLinea = (texto: string) => {
     const lineas = texto.split('\n').filter(Boolean);
@@ -69,17 +72,41 @@ export default function MisEntradas() {
     if (lineas.length > 1) return lineas.slice(1).join(' ');
     return texto.length > 50 ? texto.substring(50) : '';
   };
-    const entradasFiltradas = entradas
+
+const verResumenMes = async (seccion: Seccion) => {
+  setMesResumen(seccion.titulo);
+  setModalResumen(true);
+  setResumenTexto('');
+  setCargandoResumen(true);
+  try {
+    const perfilDatos = await AsyncStorage.getItem('perfil');
+    const perfil = perfilDatos ? JSON.parse(perfilDatos) : { camino: 'todo' };
+    const resumen = await generarResumenMensual(
+      seccion.data.map((e) => ({
+        texto: e.texto,
+        emocion: e.emocion || null,
+        fecha: e.fecha,
+      })),
+      perfil.camino
+    );
+    setResumenTexto(resumen);
+  } catch {
+    setResumenTexto('No se pudo generar el resumen. Verifica tu conexión.');
+  }
+  setCargandoResumen(false);
+};
+
+  const entradasFiltradas = entradas
     .filter((e) =>
-        e.texto.toLowerCase().includes(busqueda.toLowerCase()) ||
-        (e.emocion && e.emocion.toLowerCase().includes(busqueda.toLowerCase()))
+      e.texto.toLowerCase().includes(busqueda.toLowerCase()) ||
+      (e.emocion && e.emocion.toLowerCase().includes(busqueda.toLowerCase()))
     )
     .filter((e) => !filtroEmocion || e.emocion === filtroEmocion)
     .filter((e) => !filtroDestacadas || e.destacada)
     .sort((a, b) => {
-        if (filtroOrden === 'recientes') return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
-        if (filtroOrden === 'antiguas') return new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
-        return a.texto.localeCompare(b.texto);
+      if (filtroOrden === 'recientes') return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+      if (filtroOrden === 'antiguas') return new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
+      return a.texto.localeCompare(b.texto);
     });
 
   const agruparPorMes = (lista: Entrada[]): Seccion[] => {
@@ -93,14 +120,9 @@ export default function MisEntradas() {
   };
 
   const secciones = agruparPorMes(entradasFiltradas);
-
-  // Stats
   const totalEntradas = entradas.length;
   const racha = 1;
-  const diasEsteMes = entradas.filter((e) => {
-    const mes = new Date(e.fecha).getMonth();
-    return mes === new Date().getMonth();
-  }).length;
+  const diasEsteMes = entradas.filter((e) => new Date(e.fecha).getMonth() === new Date().getMonth()).length;
   const emocionMasFrecuente = entradas.length > 0
     ? entradas.reduce((acc: { [key: string]: number }, e) => {
         if (e.emocion) acc[e.emocion] = (acc[e.emocion] || 0) + 1;
@@ -121,12 +143,12 @@ export default function MisEntradas() {
           <Text style={[styles.subtitulo, { color: colores.textoSecundario }]}>Tu historia, día a día 💜</Text>
         </View>
         <View style={styles.headerBotones}>
-            <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.headerBtn, { backgroundColor: filtroEmocion || filtroDestacadas ? colores.acento : colores.fondoTarjeta }]}
             onPress={() => setMostrarFiltros(true)}
-            >
+          >
             <Ionicons name="options-outline" size={20} color={filtroEmocion || filtroDestacadas ? '#fff' : colores.texto} />
-            </TouchableOpacity>
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.headerBtnPrimary, { backgroundColor: colores.acento }]}
             onPress={() => router.push('/(tabs)/nueva_entrada')}
@@ -182,7 +204,7 @@ export default function MisEntradas() {
 
       {entradas.length === 0 ? (
         <View style={styles.vacio}>
-          <Text style={[styles.vacioEmoji]}>📖</Text>
+          <Text style={styles.vacioEmoji}>📖</Text>
           <Text style={[styles.vacioTexto, { color: colores.texto }]}>Aún no tienes entradas</Text>
           <Text style={[styles.vacioHint, { color: colores.textoSecundario }]}>Escribe tu primera entrada</Text>
           <TouchableOpacity
@@ -215,11 +237,8 @@ export default function MisEntradas() {
               style={[styles.tarjeta, { backgroundColor: colores.fondoTarjeta }, item.destacada && { borderColor: '#f5c518', borderWidth: 1.5 }]}
               onPress={() => router.push({ pathname: '/(tabs)/entrada-detalle', params: { id: item.id } })}
             >
-              {/* Barra lateral de color */}
               <View style={[styles.tarjetaBarra, { backgroundColor: colores.acento }]} />
-
               <View style={styles.tarjetaContenido}>
-                {/* Fecha y emoción */}
                 <View style={styles.tarjetaHeader}>
                   <Text style={[styles.tarjetaFecha, { color: colores.acento }]}>
                     {formatearFechaCorta(item.fecha)}
@@ -236,8 +255,6 @@ export default function MisEntradas() {
                     </TouchableOpacity>
                   </View>
                 </View>
-
-                {/* Título y preview */}
                 <Text style={[styles.tarjetaTitulo, { color: colores.texto }]} numberOfLines={1}>
                   {primerLinea(item.texto)}
                 </Text>
@@ -246,8 +263,6 @@ export default function MisEntradas() {
                     {resto(item.texto)}
                   </Text>
                 )}
-
-                {/* Footer */}
                 <View style={styles.tarjetaFooter}>
                   <View style={styles.tarjetaStat}>
                     <Ionicons name="document-text-outline" size={12} color={colores.textoSecundario} />
@@ -260,9 +275,6 @@ export default function MisEntradas() {
                     <Text style={[styles.tarjetaStatTexto, { color: colores.textoSecundario }]}>
                       {Math.ceil(item.texto.split(' ').filter(Boolean).length / 200) || 1} min lectura
                     </Text>
-                  </View>
-                  <View style={[styles.etiqueta, { backgroundColor: colores.acento + '20' }]}>
-                    <Text style={[styles.etiquetaTexto, { color: colores.acento }]}>Trabajo</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={colores.textoSecundario} />
                 </View>
@@ -278,7 +290,10 @@ export default function MisEntradas() {
                 <Text style={[styles.bannerTitulo, { color: colores.acento }]}>Tu asistente de diario</Text>
                 <Text style={[styles.bannerSub, { color: colores.textoSecundario }]}>¿Quieres ver un resumen de tus emociones este mes?</Text>
               </View>
-              <TouchableOpacity style={[styles.bannerBtn, { backgroundColor: colores.fondoTarjeta }]}>
+              <TouchableOpacity
+                style={[styles.bannerBtn, { backgroundColor: colores.fondoTarjeta }]}
+                onPress={() => verResumenMes(section)}
+              >
                 <Text style={[styles.bannerBtnTexto, { color: colores.acento }]}>Ver resumen</Text>
                 <Ionicons name="chevron-forward" size={14} color={colores.acento} />
               </TouchableOpacity>
@@ -286,78 +301,95 @@ export default function MisEntradas() {
           )}
         />
       )}
-      {/* Modal filtros */}
-        <Modal visible={mostrarFiltros} animationType="slide" transparent>
-        <View style={styles.modalFondo}>
-            <View style={[styles.modalFiltros, { backgroundColor: colores.fondoTarjeta }]}>
-            
-            <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
-            
-            <View style={styles.modalFiltrosHeader}>
-                <Text style={[styles.modalFiltrosTitulo, { color: colores.texto }]}>Filtros</Text>
-                <TouchableOpacity onPress={() => {
-                setFiltroEmocion(null);
-                setFiltroDestacadas(false);
-                setFiltroOrden('recientes');
-                }}>
-                <Text style={[styles.limpiar, { color: colores.acento }]}>Limpiar</Text>
-                </TouchableOpacity>
-            </View>
 
-            {/* Filtro por emoción */}
+      {/* Modal filtros */}
+      <Modal visible={mostrarFiltros} animationType="slide" transparent>
+        <View style={styles.modalFondo}>
+          <View style={[styles.modalFiltros, { backgroundColor: colores.fondoTarjeta }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
+            <View style={styles.modalFiltrosHeader}>
+              <Text style={[styles.modalFiltrosTitulo, { color: colores.texto }]}>Filtros</Text>
+              <TouchableOpacity onPress={() => { setFiltroEmocion(null); setFiltroDestacadas(false); setFiltroOrden('recientes'); }}>
+                <Text style={[styles.limpiar, { color: colores.acento }]}>Limpiar</Text>
+              </TouchableOpacity>
+            </View>
             <Text style={[styles.filtroLabel, { color: colores.textoSecundario }]}>Por emoción</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtroRow}>
-                {['Genial', 'Bien', 'Neutral', 'Triste', 'Enojado', 'Cansado'].map((e) => (
+              {['Genial', 'Bien', 'Neutral', 'Triste', 'Enojado', 'Cansado'].map((e) => (
                 <TouchableOpacity
-                    key={e}
-                    style={[styles.filtroBadge, { backgroundColor: filtroEmocion === e ? colores.acento : colores.fondo }]}
-                    onPress={() => setFiltroEmocion(filtroEmocion === e ? null : e)}
+                  key={e}
+                  style={[styles.filtroBadge, { backgroundColor: filtroEmocion === e ? colores.acento : colores.fondo }]}
+                  onPress={() => setFiltroEmocion(filtroEmocion === e ? null : e)}
                 >
-                    <Text>{emocionEmoji[e]}</Text>
-                    <Text style={[styles.filtroBadgeTexto, { color: filtroEmocion === e ? '#fff' : colores.texto }]}>{e}</Text>
+                  <Text>{emocionEmoji[e]}</Text>
+                  <Text style={[styles.filtroBadgeTexto, { color: filtroEmocion === e ? '#fff' : colores.texto }]}>{e}</Text>
                 </TouchableOpacity>
-                ))}
+              ))}
             </ScrollView>
-
-            {/* Filtro destacadas */}
             <Text style={[styles.filtroLabel, { color: colores.textoSecundario }]}>Tipo</Text>
             <TouchableOpacity
-                style={[styles.filtroOpcion, { backgroundColor: filtroDestacadas ? colores.acento + '20' : colores.fondo, borderColor: filtroDestacadas ? colores.acento : 'transparent' }]}
-                onPress={() => setFiltroDestacadas(!filtroDestacadas)}
+              style={[styles.filtroOpcion, { backgroundColor: filtroDestacadas ? colores.acento + '20' : colores.fondo, borderColor: filtroDestacadas ? colores.acento : 'transparent' }]}
+              onPress={() => setFiltroDestacadas(!filtroDestacadas)}
             >
-                <Ionicons name="star" size={18} color={filtroDestacadas ? '#f5c518' : colores.textoSecundario} />
-                <Text style={[styles.filtroOpcionTexto, { color: filtroDestacadas ? colores.acento : colores.texto }]}>Solo destacadas</Text>
-                {filtroDestacadas && <Ionicons name="checkmark-circle" size={18} color={colores.acento} />}
+              <Ionicons name="star" size={18} color={filtroDestacadas ? '#f5c518' : colores.textoSecundario} />
+              <Text style={[styles.filtroOpcionTexto, { color: filtroDestacadas ? colores.acento : colores.texto }]}>Solo destacadas</Text>
+              {filtroDestacadas && <Ionicons name="checkmark-circle" size={18} color={colores.acento} />}
             </TouchableOpacity>
-
-            {/* Ordenar */}
             <Text style={[styles.filtroLabel, { color: colores.textoSecundario }]}>Ordenar por</Text>
             {[
-                { id: 'recientes', label: 'Más recientes primero', icon: 'time-outline' },
-                { id: 'antiguas', label: 'Más antiguas primero', icon: 'calendar-outline' },
-                { id: 'az', label: 'Alfabético A-Z', icon: 'text-outline' },
+              { id: 'recientes', label: 'Más recientes primero', icon: 'time-outline' },
+              { id: 'antiguas', label: 'Más antiguas primero', icon: 'calendar-outline' },
+              { id: 'az', label: 'Alfabético A-Z', icon: 'text-outline' },
             ].map((o) => (
-                <TouchableOpacity
+              <TouchableOpacity
                 key={o.id}
                 style={[styles.filtroOpcion, { backgroundColor: filtroOrden === o.id ? colores.acento + '20' : colores.fondo, borderColor: filtroOrden === o.id ? colores.acento : 'transparent' }]}
                 onPress={() => setFiltroOrden(o.id as any)}
-                >
+              >
                 <Ionicons name={o.icon as any} size={18} color={filtroOrden === o.id ? colores.acento : colores.textoSecundario} />
                 <Text style={[styles.filtroOpcionTexto, { color: filtroOrden === o.id ? colores.acento : colores.texto }]}>{o.label}</Text>
                 {filtroOrden === o.id && <Ionicons name="checkmark-circle" size={18} color={colores.acento} />}
-                </TouchableOpacity>
+              </TouchableOpacity>
             ))}
-
             <TouchableOpacity
-                style={[styles.filtroAplicar, { backgroundColor: colores.acento }]}
-                onPress={() => setMostrarFiltros(false)}
+              style={[styles.filtroAplicar, { backgroundColor: colores.acento }]}
+              onPress={() => setMostrarFiltros(false)}
             >
-                <Text style={styles.filtroAplicarTexto}>Aplicar filtros</Text>
+              <Text style={styles.filtroAplicarTexto}>Aplicar filtros</Text>
             </TouchableOpacity>
-
-            </View>
+          </View>
         </View>
-        </Modal>
+      </Modal>
+
+      {/* Modal resumen mensual */}
+      <Modal visible={modalResumen} animationType="slide" transparent>
+        <View style={styles.modalFondo}>
+          <View style={[styles.modalResumen, { backgroundColor: colores.fondoTarjeta }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
+            <View style={styles.modalResumenHeader}>
+              <Ionicons name="sparkles" size={20} color={colores.acento} />
+              <Text style={[styles.modalResumenTitulo, { color: colores.texto }]}>
+                Resumen de {mesResumen}
+              </Text>
+              <TouchableOpacity onPress={() => setModalResumen(false)}>
+                <Ionicons name="close" size={24} color={colores.textoSecundario} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {cargandoResumen ? (
+                <View style={styles.cargandoContainer}>
+                  <Text style={[styles.cargandoTexto, { color: colores.textoSecundario }]}>
+                    La IA está analizando tu mes... ✨
+                  </Text>
+                </View>
+              ) : (
+                <Text style={[styles.resumenTexto, { color: colores.texto }]}>{resumenTexto}</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -425,4 +457,10 @@ const styles = StyleSheet.create({
   filtroOpcionTexto: { flex: 1, fontSize: 14 },
   filtroAplicar: { borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
   filtroAplicarTexto: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  modalResumen: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '80%' },
+  modalResumenHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  modalResumenTitulo: { flex: 1, fontSize: 18, fontWeight: 'bold', textTransform: 'capitalize' },
+  cargandoContainer: { alignItems: 'center', padding: 40 },
+  cargandoTexto: { fontSize: 15, textAlign: 'center' },
+  resumenTexto: { fontSize: 15, lineHeight: 26 },
 });

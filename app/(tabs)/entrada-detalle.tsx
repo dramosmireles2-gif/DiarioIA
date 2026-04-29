@@ -1,5 +1,5 @@
 import { useTema } from '@/contexts/ThemeContext';
-import { analizarEmocion, generarEtiquetas, generarReflexion } from '@/services/ia';
+import { analizarEmocion, detectarEmocion, generarEtiquetas, generarReflexion, mejorarTexto, resumirTexto } from '@/services/ia';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -21,6 +21,8 @@ export default function EntradaDetalle() {
   const [analisis, setAnalisis] = useState<{ nivelEstres: number; emocionPrincipal: string; resumen: string } | null>(null);
   const [etiquetas, setEtiquetas] = useState<string[]>([]);
   const [cargandoIA, setCargandoIA] = useState(false);
+  const [cargandoModal, setCargandoModal] = useState(false);
+  const [mensajeModal, setMensajeModal] = useState('');
   const { colores } = useTema();
   const { id, analizar } = useLocalSearchParams();
   const router = useRouter();
@@ -33,11 +35,9 @@ export default function EntradaDetalle() {
   const [imagenSeleccionada, setImagenSeleccionada] = useState<string | null>(null);
 
   const cargarEntrada = async () => {
-    // Limpiar estados anteriores
     setReflexion(null);
     setAnalisis(null);
     setEtiquetas([]);
-    
     const datos = await AsyncStorage.getItem('entradas');
     if (datos) {
       const entradas: Entrada[] = JSON.parse(datos);
@@ -54,11 +54,7 @@ export default function EntradaDetalle() {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      cargarEntrada();
-    }, [id])
-  );
+  useFocusEffect(useCallback(() => { cargarEntrada(); }, [id]));
 
   const toggleDestacada = async () => {
     if (!entrada) return;
@@ -119,45 +115,97 @@ export default function EntradaDetalle() {
     });
   };
 
+  const ejecutarAnalisisIA = async (entradaActual: Entrada) => {
+    if (!entradaActual.texto) return;
+    setCargandoIA(true);
+    try {
+      const perfilDatos = await AsyncStorage.getItem('perfil');
+      const perfil = perfilDatos ? JSON.parse(perfilDatos) : { camino: 'todo' };
+      const [reflexionIA, analisisIA, etiquetasIA] = await Promise.all([
+        generarReflexion(entradaActual.texto, perfil.camino, entradaActual.emocion || null),
+        analizarEmocion(entradaActual.texto),
+        generarEtiquetas(entradaActual.texto),
+      ]);
+      setReflexion(reflexionIA);
+      setAnalisis(analisisIA);
+      setEtiquetas(etiquetasIA);
+      const datos = await AsyncStorage.getItem('entradas');
+      if (datos) {
+        const entradas: Entrada[] = JSON.parse(datos);
+        const nuevas = entradas.map((e) =>
+          e.id === entradaActual.id
+            ? { ...e, reflexion: reflexionIA, analisis: analisisIA, etiquetas: etiquetasIA }
+            : e
+        );
+        await AsyncStorage.setItem('entradas', JSON.stringify(nuevas));
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo conectar con la IA. Verifica tu conexión.');
+    }
+    setCargandoIA(false);
+  };
+
+  const handleMejorarTexto = async () => {
+    if (!textoEditado) return;
+    setCargandoModal(true);
+    setMensajeModal('Mejorando tu texto...');
+    try {
+      const perfilDatos = await AsyncStorage.getItem('perfil');
+      const perfil = perfilDatos ? JSON.parse(perfilDatos) : { camino: 'todo' };
+      const mejorado = await mejorarTexto(textoEditado, perfil.camino);
+      setTextoEditado(mejorado);
+      setMensajeModal('✅ Texto mejorado');
+      setTimeout(() => setMensajeModal(''), 2000);
+    } catch {
+      setMensajeModal('Error al mejorar el texto');
+      setTimeout(() => setMensajeModal(''), 2000);
+    }
+    setCargandoModal(false);
+  };
+
+  const handleResumirTexto = async () => {
+    if (!textoEditado) return;
+    setCargandoModal(true);
+    setMensajeModal('Generando resumen...');
+    try {
+      const perfilDatos = await AsyncStorage.getItem('perfil');
+      const perfil = perfilDatos ? JSON.parse(perfilDatos) : { camino: 'todo' };
+      const resumen = await resumirTexto(textoEditado, perfil.camino);
+      Alert.alert('📄 Resumen de tu entrada', resumen, [
+        { text: 'Usar como texto', onPress: () => setTextoEditado(resumen) },
+        { text: 'Cerrar', style: 'cancel' },
+      ]);
+      setMensajeModal('');
+    } catch {
+      setMensajeModal('Error al resumir');
+      setTimeout(() => setMensajeModal(''), 2000);
+    }
+    setCargandoModal(false);
+  };
+
+  const handleDetectarEmocion = async () => {
+    if (!textoEditado) return;
+    setCargandoModal(true);
+    setMensajeModal('Analizando emoción...');
+    try {
+      const emocion = await detectarEmocion(textoEditado);
+      Alert.alert('😊 Emoción detectada', emocion);
+      setMensajeModal('');
+    } catch {
+      setMensajeModal('Error al analizar');
+      setTimeout(() => setMensajeModal(''), 2000);
+    }
+    setCargandoModal(false);
+  };
+
   if (!entrada) return null;
 
   const fecha = new Date(entrada.fecha);
   const palabras = entrada.texto.split(' ').filter(Boolean).length;
 
-  const ejecutarAnalisisIA = async (entradaActual: Entrada) => {
-  if (!entradaActual.texto) return;
-  setCargandoIA(true);
-  try {
-    const perfilDatos = await AsyncStorage.getItem('perfil');
-    const perfil = perfilDatos ? JSON.parse(perfilDatos) : { camino: 'todo' };
-    const [reflexionIA, analisisIA, etiquetasIA] = await Promise.all([
-      generarReflexion(entradaActual.texto, perfil.camino, entradaActual.emocion || null),
-      analizarEmocion(entradaActual.texto),
-      generarEtiquetas(entradaActual.texto),
-    ]);
-    setReflexion(reflexionIA);
-    setAnalisis(analisisIA);
-    setEtiquetas(etiquetasIA);
-    const datos = await AsyncStorage.getItem('entradas');
-    if (datos) {
-      const entradas: Entrada[] = JSON.parse(datos);
-      const nuevas = entradas.map((e) =>
-        e.id === entradaActual.id
-          ? { ...e, reflexion: reflexionIA, analisis: analisisIA, etiquetas: etiquetasIA }
-          : e
-      );
-      await AsyncStorage.setItem('entradas', JSON.stringify(nuevas));
-    }
-  } catch (error) {
-    Alert.alert('Error', 'No se pudo conectar con la IA. Verifica tu conexión.');
-  }
-  setCargandoIA(false);
-};
-
   return (
     <View style={[styles.container, { backgroundColor: colores.fondo }]}>
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
           <Ionicons name="arrow-back" size={24} color={colores.texto} />
@@ -177,7 +225,6 @@ export default function EntradaDetalle() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
-        {/* Fecha y emoción */}
         <View style={styles.fechaRow}>
           <View>
             <View style={styles.fechaFila}>
@@ -200,7 +247,6 @@ export default function EntradaDetalle() {
           )}
         </View>
 
-        {/* Stats */}
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, { backgroundColor: colores.fondoTarjeta }]}>
             <View style={[styles.statIcono, { backgroundColor: '#7c6af722' }]}>
@@ -225,12 +271,10 @@ export default function EntradaDetalle() {
           </View>
         </View>
 
-        {/* Texto */}
         <View style={[styles.textoCard, { backgroundColor: colores.fondoTarjeta }]}>
           <Text style={[styles.texto, { color: colores.texto }]}>{entrada.texto}</Text>
         </View>
 
-        {/* Reflexión IA */}
         <View style={[styles.reflexionCard, { backgroundColor: colores.acento + '15', borderColor: colores.acento + '30' }]}>
           <View style={styles.reflexionHeader}>
             <Ionicons name="sparkles" size={20} color={colores.acento} />
@@ -240,7 +284,7 @@ export default function EntradaDetalle() {
           {reflexion ? (
             <Text style={[styles.reflexionTextoContenido, { color: colores.texto }]}>{reflexion}</Text>
           ) : cargandoIA ? (
-            <Text style={[styles.reflexionSub, { color: colores.textoSecundario }]}>La IA está generando tu reflexión personalizada... ✨</Text>
+            <Text style={[styles.reflexionSub, { color: colores.textoSecundario }]}>La IA está generando tu reflexión... ✨</Text>
           ) : (
             <TouchableOpacity onPress={() => entrada && ejecutarAnalisisIA(entrada)}>
               <Text style={[styles.reflexionSub, { color: colores.acento }]}>Toca para generar reflexión con IA ✨</Text>
@@ -248,7 +292,6 @@ export default function EntradaDetalle() {
           )}
         </View>
 
-        {/* Etiquetas */}
         <View style={styles.seccion}>
           <View style={styles.seccionHeader}>
             <Ionicons name="pricetag-outline" size={16} color={colores.textoSecundario} />
@@ -273,7 +316,6 @@ export default function EntradaDetalle() {
           </View>
         </View>
 
-        {/* Archivos adjuntos */}
         <View style={styles.seccion}>
           <View style={styles.seccionHeader}>
             <Ionicons name="attach-outline" size={16} color={colores.textoSecundario} />
@@ -306,7 +348,6 @@ export default function EntradaDetalle() {
           )}
         </View>
 
-        {/* Análisis IA */}
         <View style={[styles.iaCard, { backgroundColor: colores.acento + '15', borderColor: colores.acento + '30' }]}>
           <View style={styles.iaHeader}>
             <Ionicons name="bulb-outline" size={18} color={colores.acento} />
@@ -327,14 +368,12 @@ export default function EntradaDetalle() {
           </View>
         </View>
 
-        {/* Fecha creación */}
         <Text style={[styles.fechaCreacion, { color: colores.textoSecundario }]}>
           Creada el {fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })} a las {fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
         </Text>
 
       </ScrollView>
 
-      {/* Modal ver imagen */}
       <Modal visible={verImagen} transparent animationType="fade">
         <View style={styles.imagenModal}>
           <TouchableOpacity style={styles.imagenModalCerrar} onPress={() => setVerImagen(false)}>
@@ -346,7 +385,6 @@ export default function EntradaDetalle() {
         </View>
       </Modal>
 
-      {/* Modal edición */}
       <Modal visible={editando} animationType="slide" transparent>
         <View style={styles.modalFondo}>
           <View style={[styles.modal, { backgroundColor: colores.fondoTarjeta }]}>
@@ -399,36 +437,68 @@ export default function EntradaDetalle() {
                 </View>
               </View>
             </View>
-            
+
             <View style={[styles.modalIaCard, { backgroundColor: colores.acento + '15' }]}>
               <Ionicons name="sparkles" size={18} color={colores.acento} />
               <View style={styles.modalIaTexto}>
                 <Text style={[styles.modalIaTitulo, { color: colores.acento }]}>Sugerencia de IA</Text>
-                <Text style={[styles.modalIaSub, { color: colores.textoSecundario }]}>Conecta la IA para obtener sugerencias</Text>
+                <Text style={[styles.modalIaSub, { color: colores.textoSecundario }]}>
+                  {cargandoModal ? mensajeModal : 'Usa la IA para mejorar tu entrada'}
+                </Text>
               </View>
-              <TouchableOpacity style={[styles.modalIaBtn, { borderColor: colores.acento }]}>
+              <TouchableOpacity
+                style={[styles.modalIaBtn, { borderColor: colores.acento }]}
+                onPress={handleMejorarTexto}
+                disabled={cargandoModal}
+              >
                 <Ionicons name="sparkles" size={12} color={colores.acento} />
-                <Text style={[styles.modalIaBtnTexto, { color: colores.acento }]}>Usar</Text>
+                <Text style={[styles.modalIaBtnTexto, { color: colores.acento }]}>
+                  {cargandoModal ? '...' : 'Mejorar'}
+                </Text>
               </TouchableOpacity>
             </View>
+
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modalAcciones}>
               <TouchableOpacity style={[styles.modalAccionBtn, { borderColor: '#ff6b6b' }]} onPress={eliminar}>
                 <Ionicons name="trash-outline" size={14} color="#ff6b6b" />
                 <Text style={[styles.modalAccionTexto, { color: '#ff6b6b' }]}>Eliminar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalAccionBtn, { borderColor: colores.acento }]}>
+              <TouchableOpacity
+                style={[styles.modalAccionBtn, { borderColor: colores.acento, opacity: cargandoModal ? 0.5 : 1 }]}
+                onPress={handleMejorarTexto}
+                disabled={cargandoModal}
+              >
                 <Ionicons name="sparkles-outline" size={14} color={colores.acento} />
-                <Text style={[styles.modalAccionTexto, { color: colores.acento }]}>Mejorar con IA</Text>
+                <Text style={[styles.modalAccionTexto, { color: colores.acento }]}>
+                  {cargandoModal && mensajeModal.includes('Mejorando') ? 'Mejorando...' : 'Mejorar con IA'}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalAccionBtn, { borderColor: '#4ecdc4' }]}>
+              <TouchableOpacity
+                style={[styles.modalAccionBtn, { borderColor: '#4ecdc4', opacity: cargandoModal ? 0.5 : 1 }]}
+                onPress={handleDetectarEmocion}
+                disabled={cargandoModal}
+              >
                 <Ionicons name="happy-outline" size={14} color="#4ecdc4" />
-                <Text style={[styles.modalAccionTexto, { color: '#4ecdc4' }]}>Analizar emoción</Text>
+                <Text style={[styles.modalAccionTexto, { color: '#4ecdc4' }]}>
+                  {cargandoModal && mensajeModal.includes('emoción') ? 'Analizando...' : 'Analizar emoción'}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalAccionBtn, { borderColor: '#f5c518' }]}>
+              <TouchableOpacity
+                style={[styles.modalAccionBtn, { borderColor: '#f5c518', opacity: cargandoModal ? 0.5 : 1 }]}
+                onPress={handleResumirTexto}
+                disabled={cargandoModal}
+              >
                 <Ionicons name="document-text-outline" size={14} color="#f5c518" />
-                <Text style={[styles.modalAccionTexto, { color: '#f5c518' }]}>Resumir</Text>
+                <Text style={[styles.modalAccionTexto, { color: '#f5c518' }]}>
+                  {cargandoModal && mensajeModal.includes('resumen') ? 'Resumiendo...' : 'Resumir'}
+                </Text>
               </TouchableOpacity>
             </ScrollView>
+
+            {mensajeModal !== '' && (
+              <Text style={[styles.mensajeModal, { color: colores.acento }]}>{mensajeModal}</Text>
+            )}
+
             <View style={styles.modalBotones}>
               <TouchableOpacity style={[styles.modalCancelar, { backgroundColor: colores.fondo }]} onPress={() => setEditando(false)}>
                 <Text style={[styles.modalCancelarTexto, { color: colores.textoSecundario }]}>Cancelar</Text>
@@ -466,9 +536,11 @@ const styles = StyleSheet.create({
   textoCard: { borderRadius: 16, padding: 16, marginBottom: 16 },
   texto: { fontSize: 16, lineHeight: 28 },
   reflexionCard: { borderRadius: 16, padding: 14, marginBottom: 16, borderWidth: 1 },
+  reflexionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   reflexionTexto: { flex: 1 },
   reflexionTitulo: { fontSize: 14, fontWeight: 'bold' },
   reflexionSub: { fontSize: 12, marginTop: 2 },
+  reflexionTextoContenido: { fontSize: 14, lineHeight: 22 },
   seccion: { marginBottom: 16 },
   seccionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   seccionTitulo: { fontSize: 15, fontWeight: 'bold' },
@@ -515,11 +587,10 @@ const styles = StyleSheet.create({
   modalAcciones: { marginBottom: 12 },
   modalAccionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginRight: 8 },
   modalAccionTexto: { fontSize: 12, fontWeight: '600' },
+  mensajeModal: { textAlign: 'center', fontSize: 13, marginBottom: 8, fontWeight: '600' },
   modalBotones: { flexDirection: 'row', gap: 12 },
   modalCancelar: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center' },
   modalCancelarTexto: { fontWeight: 'bold' },
   modalGuardar: { flex: 1, backgroundColor: '#7c6af7', borderRadius: 12, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
   modalGuardarTexto: { color: '#fff', fontWeight: 'bold' },
-  reflexionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  reflexionTextoContenido: { fontSize: 14, lineHeight: 22 },
 });

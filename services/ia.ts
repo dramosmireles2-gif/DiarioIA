@@ -16,9 +16,18 @@ const llamarClaude = async (prompt: string, sistema: string): Promise<string> =>
       messages: [{ role: 'user', content: prompt }],
     }),
   });
-
   const data = await response.json();
   return data.content[0].text;
+};
+
+const getSistemaEspiritual = (camino: string) => {
+  const estilos: { [key: string]: string } = {
+    biblica: 'Eres un consejero espiritual cristiano profundo y empático. Siempre incluyes versículos bíblicos relevantes y reflexiones basadas en la fe cristiana. Tu tono es cálido, esperanzador y lleno de amor.',
+    mindfulness: 'Eres un guía de mindfulness y meditación experto. Das reflexiones centradas en el presente, la respiración, la calma interior y el bienestar emocional. Tu tono es sereno y compasivo.',
+    filosofia: 'Eres un filósofo sabio y empático. Usas citas y pensamientos de filósofos reconocidos para dar reflexiones profundas sobre la vida, el crecimiento personal y la búsqueda del sentido. Tu tono es reflexivo e inspirador.',
+    todo: 'Eres un consejero espiritual y emocional integral. Combinas sabiduría bíblica, mindfulness y filosofía para dar reflexiones equilibradas y profundas. Tu tono es cálido, sabio y esperanzador.',
+  };
+  return estilos[camino] || estilos.todo;
 };
 
 export const generarReflexion = async (
@@ -26,16 +35,8 @@ export const generarReflexion = async (
   camino: string,
   emocion: string | null
 ): Promise<string> => {
-  const estilos: { [key: string]: string } = {
-    biblica: 'Eres un consejero espiritual cristiano que usa versículos bíblicos para dar reflexiones profundas y reconfortantes. Siempre incluye un versículo relevante.',
-    mindfulness: 'Eres un guía de mindfulness y meditación que da reflexiones calmantes y centradas en el presente.',
-    filosofia: 'Eres un filósofo que usa citas y pensamientos filosóficos para dar reflexiones profundas sobre la vida.',
-    todo: 'Eres un consejero espiritual y emocional que combina sabiduría bíblica, mindfulness y filosofía para dar reflexiones equilibradas.',
-  };
-
-  const sistema = estilos[camino] || estilos.todo;
+  const sistema = getSistemaEspiritual(camino);
   const prompt = `El usuario escribió en su diario: "${texto}"\n\nSu estado emocional es: ${emocion || 'no especificado'}\n\nDa una reflexión personalizada, empática y profunda en español. Máximo 3 párrafos cortos. Sé cálido y esperanzador.`;
-
   return llamarClaude(prompt, sistema);
 };
 
@@ -46,7 +47,6 @@ export const analizarEmocion = async (texto: string): Promise<{
 }> => {
   const sistema = 'Eres un psicólogo experto en análisis emocional. Analiza el texto y responde SOLO en JSON válido sin explicaciones.';
   const prompt = `Analiza este texto de diario: "${texto}"\n\nResponde EXACTAMENTE en este formato JSON:\n{"nivelEstres": número del 0 al 100, "emocionPrincipal": "una palabra", "resumen": "una oración corta describiendo el estado emocional"}`;
-
   const respuesta = await llamarClaude(prompt, sistema);
   try {
     const clean = respuesta.replace(/```json|```/g, '').trim();
@@ -59,7 +59,6 @@ export const analizarEmocion = async (texto: string): Promise<{
 export const generarEtiquetas = async (texto: string): Promise<string[]> => {
   const sistema = 'Eres un experto en categorización de emociones y temas. Responde SOLO en JSON válido.';
   const prompt = `Analiza este texto de diario: "${texto}"\n\nResponde EXACTAMENTE en este formato JSON con máximo 3 etiquetas relevantes:\n{"etiquetas": ["etiqueta1", "etiqueta2", "etiqueta3"]}`;
-
   const respuesta = await llamarClaude(prompt, sistema);
   try {
     const clean = respuesta.replace(/```json|```/g, '').trim();
@@ -70,7 +69,10 @@ export const generarEtiquetas = async (texto: string): Promise<string[]> => {
   }
 };
 
-export const generarInsights = async (entradas: { texto: string; emocion: string | null; fecha: string }[]): Promise<{
+export const generarInsights = async (
+  entradas: { texto: string; emocion: string | null; fecha: string }[],
+  camino: string = 'todo'
+): Promise<{
   estadoEmocional: string;
   momentoFavorito: string;
   enfoquePrincipal: string;
@@ -78,10 +80,9 @@ export const generarInsights = async (entradas: { texto: string; emocion: string
   descripcionMomento: string;
   descripcionEnfoque: string;
 }> => {
-  const sistema = 'Eres un psicólogo experto en bienestar emocional. Analiza patrones en entradas de diario. Responde SOLO en JSON válido.';
+  const sistema = `${getSistemaEspiritual(camino)} También eres experto en análisis de patrones emocionales. Responde SOLO en JSON válido.`;
   const resumen = entradas.slice(0, 10).map((e) => `[${e.fecha}] Emoción: ${e.emocion || 'no especificada'} - "${e.texto.substring(0, 100)}"`).join('\n');
   const prompt = `Analiza estas entradas de diario:\n${resumen}\n\nResponde EXACTAMENTE en este formato JSON:\n{"estadoEmocional": "descripción breve", "momentoFavorito": "momento del día", "enfoquePrincipal": "tema principal", "descripcionEstado": "una oración", "descripcionMomento": "una oración", "descripcionEnfoque": "una oración"}`;
-
   const respuesta = await llamarClaude(prompt, sistema);
   try {
     const clean = respuesta.replace(/```json|```/g, '').trim();
@@ -96,4 +97,39 @@ export const generarInsights = async (entradas: { texto: string; emocion: string
       descripcionEnfoque: 'Identificando tus temas',
     };
   }
+};
+
+export const mejorarTexto = async (texto: string, camino: string = 'todo'): Promise<string> => {
+  const sistema = `${getSistemaEspiritual(camino)} También eres un escritor experto que mejora textos de diario personal manteniendo la voz y emociones originales del autor.`;
+  const prompt = `Mejora este texto de diario manteniendo el mismo significado y emoción, pero con mejor redacción. Responde SOLO con el texto mejorado, sin explicaciones:\n\n"${texto}"`;
+  return llamarClaude(prompt, sistema);
+};
+
+export const resumirTexto = async (texto: string, camino: string = 'todo'): Promise<string> => {
+  const sistema = `${getSistemaEspiritual(camino)} También eres experto en síntesis de texto de diario personal.`;
+  const prompt = `Resume este texto de diario en 2-3 oraciones cortas, capturando lo más importante:\n\n"${texto}"`;
+  return llamarClaude(prompt, sistema);
+};
+
+export const detectarEmocion = async (texto: string): Promise<string> => {
+  const sistema = 'Eres un psicólogo experto en emociones. Detecta la emoción principal en textos. Responde SOLO en JSON.';
+  const prompt = `Detecta la emoción principal en este texto: "${texto}"\n\nResponde EXACTAMENTE en este formato JSON:\n{"emocion": "una de estas opciones: Genial, Bien, Neutral, Triste, Enojado, Cansado", "explicacion": "una oración corta"}`;
+  const respuesta = await llamarClaude(prompt, sistema);
+  try {
+    const clean = respuesta.replace(/```json|```/g, '').trim();
+    const data = JSON.parse(clean);
+    return `${data.emocion} — ${data.explicacion}`;
+  } catch {
+    return 'No se pudo detectar la emoción';
+  }
+};
+
+export const generarResumenMensual = async (
+  entradas: { texto: string; emocion: string | null; fecha: string }[],
+  camino: string = 'todo'
+): Promise<string> => {
+  const sistema = `${getSistemaEspiritual(camino)} También generas resúmenes mensuales empáticos y motivadores de diarios personales.`;
+  const resumen = entradas.map((e) => `[${new Date(e.fecha).toLocaleDateString('es-MX')}] Emoción: ${e.emocion || 'no especificada'} - "${e.texto.substring(0, 150)}"`).join('\n');
+  const prompt = `Analiza estas entradas de diario del mes y genera un resumen emocional empático de máximo 4 párrafos cortos. Incluye: cómo fue el mes emocionalmente, patrones detectados, logros o momentos positivos, y una frase motivadora para el siguiente mes:\n\n${resumen}`;
+  return llamarClaude(prompt, sistema);
 };
