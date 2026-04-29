@@ -6,6 +6,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
 import 'react-native-reanimated';
 
 export const unstable_settings = {
@@ -30,7 +31,13 @@ export default function RootLayout() {
     setCargando(false);
   };
 
-  if (cargando) return null;
+  if (cargando) return (
+    <View style={{ flex: 1, backgroundColor: '#1a1a2e', alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ fontSize: 52 }}>✨</Text>
+      <Text style={{ color: '#e0e0e0', fontSize: 22, fontWeight: 'bold', marginTop: 16 }}>Mi Diario con IA</Text>
+      <Text style={{ color: '#9b9b9b', fontSize: 14, marginTop: 8 }}>Tu espacio para reflexionar</Text>
+    </View>
+  );
 
   return (
     <AppThemeProvider>

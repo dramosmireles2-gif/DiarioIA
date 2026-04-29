@@ -2,22 +2,37 @@ const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY;
 const API_URL = 'https://api.anthropic.com/v1/messages';
 
 const llamarClaude = async (prompt: string, sistema: string): Promise<string> => {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': API_KEY || '',
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5',
-      max_tokens: 1024,
-      system: sistema,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-  const data = await response.json();
-  return data.content[0].text;
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY || '',
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 1024,
+        system: sistema,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('API key inválida');
+      if (response.status === 429) throw new Error('Demasiadas solicitudes. Espera un momento');
+      if (response.status === 500) throw new Error('Error en el servidor de IA');
+      throw new Error('Error al conectar con la IA');
+    }
+
+    const data = await response.json();
+    return data.content[0].text;
+  } catch (error: any) {
+    if (error.message === 'Network request failed') {
+      throw new Error('Sin conexión a internet. Verifica tu red e intenta de nuevo');
+    }
+    throw error;
+  }
 };
 
 const getSistemaEspiritual = (camino: string) => {
