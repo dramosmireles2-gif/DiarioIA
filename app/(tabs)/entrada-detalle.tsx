@@ -33,6 +33,11 @@ export default function EntradaDetalle() {
   const [imagenSeleccionada, setImagenSeleccionada] = useState<string | null>(null);
 
   const cargarEntrada = async () => {
+    // Limpiar estados anteriores
+    setReflexion(null);
+    setAnalisis(null);
+    setEtiquetas([]);
+    
     const datos = await AsyncStorage.getItem('entradas');
     if (datos) {
       const entradas: Entrada[] = JSON.parse(datos);
@@ -243,21 +248,30 @@ export default function EntradaDetalle() {
           )}
         </View>
 
-        {etiquetas.length > 0 ? (
-          etiquetas.map((etiqueta) => (
-            <View key={etiqueta} style={[styles.etiqueta, { backgroundColor: colores.acento + '20' }]}>
-              <Text style={[styles.etiquetaTexto, { color: colores.acento }]}>{etiqueta}</Text>
-            </View>
-          ))
-        ) : cargandoIA ? (
-          <View style={[styles.etiqueta, { backgroundColor: colores.acento + '20' }]}>
-            <Text style={[styles.etiquetaTexto, { color: colores.acento }]}>Generando etiquetas...</Text>
+        {/* Etiquetas */}
+        <View style={styles.seccion}>
+          <View style={styles.seccionHeader}>
+            <Ionicons name="pricetag-outline" size={16} color={colores.textoSecundario} />
+            <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Etiquetas</Text>
           </View>
-        ) : (
-          <View style={[styles.etiqueta, { backgroundColor: colores.acento + '20' }]}>
-            <Text style={[styles.etiquetaTexto, { color: colores.acento }]}>Sin etiquetas aún</Text>
+          <View style={styles.etiquetasRow}>
+            {etiquetas.length > 0 ? (
+              etiquetas.map((etiqueta) => (
+                <View key={etiqueta} style={[styles.etiqueta, { backgroundColor: colores.acento + '20' }]}>
+                  <Text style={[styles.etiquetaTexto, { color: colores.acento }]}>{etiqueta}</Text>
+                </View>
+              ))
+            ) : cargandoIA ? (
+              <View style={[styles.etiqueta, { backgroundColor: colores.acento + '20' }]}>
+                <Text style={[styles.etiquetaTexto, { color: colores.acento }]}>Generando etiquetas...</Text>
+              </View>
+            ) : (
+              <View style={[styles.etiqueta, { backgroundColor: colores.acento + '20' }]}>
+                <Text style={[styles.etiquetaTexto, { color: colores.acento }]}>Sin etiquetas aún</Text>
+              </View>
+            )}
           </View>
-        )}
+        </View>
 
         {/* Archivos adjuntos */}
         <View style={styles.seccion}>
@@ -292,16 +306,25 @@ export default function EntradaDetalle() {
           )}
         </View>
 
-        <Text style={[styles.iaTexto, { color: colores.textoSecundario }]}>
-          {analisis ? analisis.resumen : cargandoIA ? 'Analizando tus emociones...' : 'Toca para analizar con IA'}
-        </Text>
-        <View style={styles.nivelContainer}>
-          <View style={[styles.nivelCirculo, { borderColor: analisis ? '#7c6af7' : colores.acento }]}>
-            <Text style={[styles.nivelNumero, { color: colores.acento }]}>
-              {analisis ? analisis.nivelEstres : cargandoIA ? '...' : '?'}
-            </Text>
+        {/* Análisis IA */}
+        <View style={[styles.iaCard, { backgroundColor: colores.acento + '15', borderColor: colores.acento + '30' }]}>
+          <View style={styles.iaHeader}>
+            <Ionicons name="bulb-outline" size={18} color={colores.acento} />
+            <Text style={[styles.iaTitulo, { color: colores.acento }]}>Análisis de IA</Text>
           </View>
-          <Text style={[styles.nivelLabel, { color: colores.textoSecundario }]}>Nivel de{'\n'}estrés</Text>
+          <View style={styles.iaContenido}>
+            <Text style={[styles.iaTexto, { color: colores.textoSecundario }]}>
+              {analisis ? analisis.resumen : cargandoIA ? 'Analizando tus emociones...' : 'Toca para analizar con IA'}
+            </Text>
+            <View style={styles.nivelContainer}>
+              <View style={[styles.nivelCirculo, { borderColor: analisis ? '#7c6af7' : colores.acento }]}>
+                <Text style={[styles.nivelNumero, { color: colores.acento }]}>
+                  {analisis ? analisis.nivelEstres : cargandoIA ? '...' : '?'}
+                </Text>
+              </View>
+              <Text style={[styles.nivelLabel, { color: colores.textoSecundario }]}>Nivel de{'\n'}estrés</Text>
+            </View>
+          </View>
         </View>
 
         {/* Fecha creación */}
@@ -376,6 +399,7 @@ export default function EntradaDetalle() {
                 </View>
               </View>
             </View>
+            
             <View style={[styles.modalIaCard, { backgroundColor: colores.acento + '15' }]}>
               <Ionicons name="sparkles" size={18} color={colores.acento} />
               <View style={styles.modalIaTexto}>
@@ -441,7 +465,7 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11 },
   textoCard: { borderRadius: 16, padding: 16, marginBottom: 16 },
   texto: { fontSize: 16, lineHeight: 28 },
-  reflexionCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 14, marginBottom: 16, borderWidth: 1 },
+  reflexionCard: { borderRadius: 16, padding: 14, marginBottom: 16, borderWidth: 1 },
   reflexionTexto: { flex: 1 },
   reflexionTitulo: { fontSize: 14, fontWeight: 'bold' },
   reflexionSub: { fontSize: 12, marginTop: 2 },
@@ -497,5 +521,5 @@ const styles = StyleSheet.create({
   modalGuardar: { flex: 1, backgroundColor: '#7c6af7', borderRadius: 12, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
   modalGuardarTexto: { color: '#fff', fontWeight: 'bold' },
   reflexionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
- reflexionTextoContenido: { fontSize: 14, lineHeight: 22 },
+  reflexionTextoContenido: { fontSize: 14, lineHeight: 22 },
 });

@@ -2,14 +2,15 @@ import BloqueoConfig from '@/components/BloqueoConfig';
 import Estadisticas from '@/components/Estadisticas';
 import Recordatorio from '@/components/Recordatorio';
 import { useTema } from '@/contexts/ThemeContext';
+import { generarInsights } from '@/services/ia';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    Alert, Image, ScrollView, StyleSheet, Text,
-    TextInput, TouchableOpacity, View,
+  Alert, Image, ScrollView, StyleSheet, Text,
+  TextInput, TouchableOpacity, View,
 } from 'react-native';
 
 type Camino = 'biblica' | 'mindfulness' | 'filosofia' | 'todo';
@@ -24,6 +25,8 @@ const caminos = [
 const generos = ['Masculino', 'Femenino', 'Prefiero no decir'];
 
 export default function Perfil() {
+  const [insights, setInsights] = useState<any>(null);
+  const [cargandoInsights, setCargandoInsights] = useState(false);
   const { colores, tema, cambiarTema } = useTema();
   const router = useRouter();
   const [editando, setEditando] = useState(false);
@@ -72,7 +75,26 @@ export default function Perfil() {
         else break;
       }
       setRacha(rachaActual);
+      if (entradas.length > 0) cargarInsights(entradas);
     }
+  };
+
+  const cargarInsights = async (entradasDatos: any[]) => {
+    if (entradasDatos.length === 0) return;
+    setCargandoInsights(true);
+    try {
+      const insightsIA = await generarInsights(
+        entradasDatos.map((e: any) => ({
+          texto: e.texto,
+          emocion: e.emocion,
+          fecha: e.fecha,
+        }))
+      );
+      setInsights(insightsIA);
+    } catch (error) {
+      console.log('Error generando insights:', error);
+    }
+    setCargandoInsights(false);
   };
 
   const guardarPerfil = async () => {
@@ -135,7 +157,6 @@ export default function Perfil() {
               </TouchableOpacity>
             </View>
           </View>
-
           <View style={styles.infoGrid}>
             <View style={[styles.infoTarjeta, { backgroundColor: colores.fondo }]}>
               <Ionicons name="calendar-outline" size={18} color={colores.acento} />
@@ -159,30 +180,48 @@ export default function Perfil() {
           <View style={styles.seccionHeader}>
             <Text style={[styles.seccionTitulo, { color: colores.texto }]}>🧠 Insights de IA</Text>
             <TouchableOpacity style={styles.verMas}>
-              <Text style={[styles.verMasTexto, { color: colores.acento }]}>Ver más</Text>
-              <Ionicons name="chevron-forward" size={14} color={colores.acento} />
+              <Text style={[styles.verMasTexto, { color: colores.acento }]}>
+                {cargandoInsights ? 'Analizando...' : 'Ver más'}
+              </Text>
+              {!cargandoInsights && <Ionicons name="chevron-forward" size={14} color={colores.acento} />}
             </TouchableOpacity>
           </View>
           <View style={styles.insightsGrid}>
             <View style={[styles.insightTarjeta, { backgroundColor: '#7c6af722' }]}>
               <Text style={styles.insightEmoji}>😌</Text>
               <Text style={[styles.insightLabel, { color: colores.textoSecundario }]}>Estado emocional</Text>
-              <Text style={[styles.insightValor, { color: colores.texto }]}>{caminoActual?.titulo || 'Sin definir'}</Text>
-              <Text style={[styles.insightDesc, { color: colores.textoSecundario }]}>{caminoActual?.descripcion || 'Configura tu perfil'}</Text>
+              <Text style={[styles.insightValor, { color: colores.texto }]}>
+                {insights ? insights.estadoEmocional : cargandoInsights ? '...' : caminoActual?.titulo || 'Sin datos'}
+              </Text>
+              <Text style={[styles.insightDesc, { color: colores.textoSecundario }]}>
+                {insights ? insights.descripcionEstado : caminoActual?.descripcion || 'Escribe entradas para ver insights'}
+              </Text>
             </View>
             <View style={[styles.insightTarjeta, { backgroundColor: '#4ecdc422' }]}>
               <Text style={styles.insightEmoji}>🌙</Text>
-              <Text style={[styles.insightLabel, { color: colores.textoSecundario }]}>Entradas totales</Text>
-              <Text style={[styles.insightValor, { color: colores.texto }]}>{totalEntradas}</Text>
-              <Text style={[styles.insightDesc, { color: colores.textoSecundario }]}>Sigue escribiendo cada día.</Text>
+              <Text style={[styles.insightLabel, { color: colores.textoSecundario }]}>Momento favorito</Text>
+              <Text style={[styles.insightValor, { color: colores.texto }]}>
+                {insights ? insights.momentoFavorito : cargandoInsights ? '...' : `${totalEntradas} entradas`}
+              </Text>
+              <Text style={[styles.insightDesc, { color: colores.textoSecundario }]}>
+                {insights ? insights.descripcionMomento : 'Sigue escribiendo cada día.'}
+              </Text>
             </View>
           </View>
+          {insights && (
+            <View style={[styles.insightExtra, { backgroundColor: '#ff6b6b22' }]}>
+              <Text style={styles.insightEmoji}>🎯</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.insightLabel, { color: colores.textoSecundario }]}>Enfoque principal</Text>
+                <Text style={[styles.insightValor, { color: colores.texto }]}>{insights.enfoquePrincipal}</Text>
+                <Text style={[styles.insightDesc, { color: colores.textoSecundario }]}>{insights.descripcionEnfoque}</Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Ajustes */}
         <View style={[styles.seccionCard, { backgroundColor: colores.fondoTarjeta }]}>
-
-          {/* Tema */}
           <View style={styles.ajusteFila}>
             <View style={[styles.ajusteIcono, { backgroundColor: '#7c6af722' }]}>
               <Ionicons name="color-palette-outline" size={20} color={colores.acento} />
@@ -207,7 +246,6 @@ export default function Perfil() {
               ))}
             </View>
           </View>
-
           <View style={[styles.separador, { backgroundColor: colores.fondo }]} />
           <BloqueoConfig />
           <View style={[styles.separador, { backgroundColor: colores.fondo }]} />
@@ -233,10 +271,10 @@ export default function Perfil() {
             <Text style={[styles.bannerTitulo, { color: colores.texto }]}>Sigue escribiendo, {nombre || 'amigo'} ✨</Text>
             <Text style={[styles.bannerSub, { color: colores.textoSecundario }]}>Cada palabra te acerca a tu mejor versión.</Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.bannerBtn, { backgroundColor: colores.acento }]}
             onPress={() => router.push('/(tabs)/nueva_entrada')}
-            >
+          >
             <Ionicons name="pencil" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -335,8 +373,9 @@ const styles = StyleSheet.create({
   seccionTitulo: { fontSize: 16, fontWeight: 'bold' },
   verMas: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   verMasTexto: { fontSize: 13 },
-  insightsGrid: { flexDirection: 'row', gap: 10 },
+  insightsGrid: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   insightTarjeta: { flex: 1, borderRadius: 14, padding: 12, gap: 4 },
+  insightExtra: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, padding: 12, marginTop: 4 },
   insightEmoji: { fontSize: 24 },
   insightLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
   insightValor: { fontSize: 14, fontWeight: 'bold' },
@@ -366,5 +405,5 @@ const styles = StyleSheet.create({
   caminoTitulo: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
   caminoDescripcion: { fontSize: 13 },
   botonGuardar: { backgroundColor: '#7c6af7', borderRadius: 12, padding: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8, marginBottom: 60 },
-  botonGuardarTexto: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  botonGuardarTexto: { color: '#fff', fontWeight: 'bold' },
 });
