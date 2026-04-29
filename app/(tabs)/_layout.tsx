@@ -50,6 +50,12 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="terminos"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

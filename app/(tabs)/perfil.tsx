@@ -278,7 +278,15 @@ export default function Perfil() {
             <Ionicons name="pencil" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
-
+        {/* Términos y privacidad */}
+        <TouchableOpacity
+          style={[styles.terminos, { backgroundColor: colores.fondoTarjeta }]}
+          onPress={() => router.push('/(tabs)/terminos' as any)}
+        >
+          <Ionicons name="document-text-outline" size={16} color={colores.textoSecundario} />
+          <Text style={[styles.terminosTexto, { color: colores.textoSecundario }]}>Términos de uso y Política de privacidad</Text>
+          <Ionicons name="chevron-forward" size={14} color={colores.textoSecundario} />
+        </TouchableOpacity>
       </ScrollView>
     );
   }
@@ -406,4 +414,6 @@ const styles = StyleSheet.create({
   caminoDescripcion: { fontSize: 13 },
   botonGuardar: { backgroundColor: '#7c6af7', borderRadius: 12, padding: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8, marginBottom: 60 },
   botonGuardarTexto: { color: '#fff', fontWeight: 'bold' },
+  terminos: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 14, marginBottom: 16 },
+ terminosTexto: { flex: 1, fontSize: 13 },
 });
