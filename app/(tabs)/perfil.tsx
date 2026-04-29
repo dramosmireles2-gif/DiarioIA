@@ -64,14 +64,22 @@ export default function Perfil() {
     if (datos) {
       const entradas = JSON.parse(datos);
       setTotalEntradas(entradas.length);
-      const fechas = entradas.map((e: any) => new Date(e.fecha).toLocaleDateString('es-MX'));
-      const unicas = [...new Set(fechas)];
+
+      // Racha real
+      const fechas = entradas
+        .map((e: any) => new Date(e.fecha).toDateString())
+        .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
+        .sort((a: string, b: string) => new Date(b).getTime() - new Date(a).getTime());
+
       let rachaActual = 0;
       const hoy = new Date();
-      for (let i = 0; i < unicas.length; i++) {
-        const fecha = new Date(unicas[i] as string);
-        const diff = Math.floor((hoy.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24));
-        if (diff === i) rachaActual = i + 1;
+      hoy.setHours(0, 0, 0, 0);
+
+      for (let i = 0; i < fechas.length; i++) {
+        const fecha = new Date(fechas[i]);
+        fecha.setHours(0, 0, 0, 0);
+        const diffDias = Math.floor((hoy.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDias === i) rachaActual++;
         else break;
       }
       setRacha(rachaActual);
@@ -278,6 +286,33 @@ export default function Perfil() {
             <Ionicons name="pencil" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
+        {/* Eliminar todos los datos */}
+        <TouchableOpacity
+          style={[styles.eliminarDatos, { backgroundColor: colores.fondoTarjeta }]}
+          onPress={() => {
+            Alert.alert(
+              '⚠️ Eliminar todos los datos',
+              'Esta acción borrará tu perfil, entradas y configuración. No se puede deshacer.',
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                  text: 'Eliminar todo',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await AsyncStorage.clear();
+                    Alert.alert('✅ Listo', 'Todos tus datos fueron eliminados', [
+                      { text: 'OK', onPress: () => router.replace('/onboarding' as any) }
+                    ]);
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <Ionicons name="trash-outline" size={16} color="#ff6b6b" />
+          <Text style={styles.eliminarDatosTexto}>Eliminar todos mis datos</Text>
+          <Ionicons name="chevron-forward" size={14} color="#ff6b6b" />
+        </TouchableOpacity>
         {/* Términos y privacidad */}
         <TouchableOpacity
           style={[styles.terminos, { backgroundColor: colores.fondoTarjeta }]}
@@ -416,4 +451,6 @@ const styles = StyleSheet.create({
   botonGuardarTexto: { color: '#fff', fontWeight: 'bold' },
   terminos: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 14, marginBottom: 16 },
  terminosTexto: { flex: 1, fontSize: 13 },
+ eliminarDatos: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 14, marginBottom: 8 },
+ eliminarDatosTexto: { flex: 1, fontSize: 13, color: '#ff6b6b', fontWeight: '600' },
 });
