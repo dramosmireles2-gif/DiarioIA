@@ -127,9 +127,6 @@ export default function Perfil() {
             <Text style={[styles.subtitulo, { color: colores.textoSecundario }]}>Tu espacio personal 💜</Text>
           </View>
           <View style={styles.headerBotones}>
-            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colores.fondoTarjeta }]}>
-              <Ionicons name="share-outline" size={20} color={colores.texto} />
-            </TouchableOpacity>
             <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colores.fondoTarjeta }]} onPress={() => setEditando(true)}>
               <Ionicons name="settings-outline" size={20} color={colores.texto} />
             </TouchableOpacity>

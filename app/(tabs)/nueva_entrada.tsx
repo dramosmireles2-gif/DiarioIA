@@ -152,12 +152,6 @@ export default function NuevaEntrada() {
               Escribe, reflexiona y entiende tus emociones 💜
             </Text>
           </View>
-          <TouchableOpacity
-            style={[styles.headerBtn, { backgroundColor: colores.fondoTarjeta }]}
-            onPress={() => setModalIA(true)}
-          >
-            <Ionicons name="sparkles-outline" size={22} color={colores.acento} />
-          </TouchableOpacity>
         </View>
 
         {/* Selector de emoción */}

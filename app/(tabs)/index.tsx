@@ -138,12 +138,6 @@ export default function Inicio() {
           <Text style={[styles.saludoSub, { color: colores.textoSecundario }]}>¿Cómo te sientes hoy?</Text>
           <Text style={[styles.saludoSub2, { color: colores.textoSecundario }]}>Tu bienestar es importante ✨</Text>
         </View>
-        <TouchableOpacity
-          style={[styles.headerBtn, { backgroundColor: colores.fondoTarjeta }]}
-          onPress={() => router.push('/(tabs)/perfil')}
-        >
-          <Ionicons name="notifications-outline" size={20} color={colores.texto} />
-        </TouchableOpacity>
       </View>
 
       {/* Selector de emoción */}
