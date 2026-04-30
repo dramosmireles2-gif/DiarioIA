@@ -1,5 +1,6 @@
 import BloqueoConfig from '@/components/BloqueoConfig';
 import Estadisticas from '@/components/Estadisticas';
+import GraficaEmocional from '@/components/GraficaEmocional';
 import Logros from '@/components/Logros';
 import Recordatorio from '@/components/Recordatorio';
 import { useTema } from '@/contexts/ThemeContext';
@@ -228,6 +229,13 @@ export default function Perfil() {
             <Text style={[styles.seccionTitulo, { color: colores.texto }]}>📊 Mis Estadísticas</Text>
           </View>
           <Estadisticas />
+        </View>
+        {/* Gráfica emocional */}
+        <View style={[styles.seccionCard, { backgroundColor: colores.fondoTarjeta }]}>
+          <Text style={[styles.seccionTitulo, { color: colores.texto }]}>📊 Mi gráfica emocional</Text>
+          <View style={{ marginTop: 12 }}>
+            <GraficaEmocional />
+          </View>
         </View>
 
         {/* Banner motivacional */}

@@ -237,6 +237,8 @@ const verResumenMes = async (seccion: Seccion) => {
           sections={secciones}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          stickySectionHeadersEnabled={false}
           renderSectionHeader={({ section }) => (
             <View style={styles.mesHeader}>
               <Text style={[styles.mesTitulo, { color: colores.acento }]}>
@@ -320,7 +322,7 @@ const verResumenMes = async (seccion: Seccion) => {
       )}
 
       {/* Modal filtros */}
-      <Modal visible={mostrarFiltros} animationType="slide" transparent>
+      <Modal visible={mostrarFiltros} animationType="slide" transparent onRequestClose={() => setMostrarFiltros(false)}>
         <View style={styles.modalFondo}>
           <View style={[styles.modalFiltros, { backgroundColor: colores.fondoTarjeta }]}>
             <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
@@ -379,7 +381,7 @@ const verResumenMes = async (seccion: Seccion) => {
       </Modal>
 
       {/* Modal resumen mensual */}
-      <Modal visible={modalResumen} animationType="slide" transparent>
+      <Modal visible={modalResumen} animationType="slide" transparent onRequestClose={() => setModalResumen(false)}>
         <View style={styles.modalFondo}>
           <View style={[styles.modalResumen, { backgroundColor: colores.fondoTarjeta }]}>
             <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
@@ -427,7 +429,7 @@ const styles = StyleSheet.create({
   statValor: { fontSize: 18, fontWeight: 'bold' },
   statValorSmall: { fontSize: 12, fontWeight: 'bold', textAlign: 'center' },
   statLabel: { fontSize: 10, textAlign: 'center' },
-  mesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 8 },
+  mesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 20, backgroundColor: 'transparent' },
   mesTitulo: { fontSize: 15, fontWeight: 'bold', textTransform: 'capitalize' },
   mesCount: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   mesCountTexto: { fontSize: 12, fontWeight: '600' },

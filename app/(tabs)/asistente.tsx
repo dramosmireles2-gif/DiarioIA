@@ -5,9 +5,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-    ActivityIndicator,
-    ScrollView, StyleSheet,
-    Text, TextInput, TouchableOpacity, View
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView, StyleSheet,
+  Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 
 type Modo = 'menu' | 'chat' | 'reflexion' | 'versiculo';
@@ -83,7 +85,10 @@ export default function Asistente() {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: colores.fondo }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colores.fondo }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  >
 
       {/* Header */}
       <View style={styles.header}>
@@ -236,7 +241,7 @@ export default function Asistente() {
         </ScrollView>
       )}
 
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

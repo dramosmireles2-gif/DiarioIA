@@ -283,7 +283,8 @@ export default function NuevaEntrada() {
       </ScrollView>
 
       {/* Modal chat IA */}
-      <Modal visible={modalIA} animationType="slide" transparent>
+      // Modal chat IA
+      <Modal visible={modalIA} animationType="slide" transparent onRequestClose={() => { setModalIA(false); setRespuestaIA(''); setChatIA(''); }}>
         <View style={styles.modalFondo}>
           <View style={[styles.modalIA, { backgroundColor: colores.fondoTarjeta }]}>
             <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />

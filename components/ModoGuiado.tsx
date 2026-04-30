@@ -4,8 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState } from 'react';
 import {
-    ActivityIndicator, Alert, Modal, ScrollView, StyleSheet,
-    Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, Alert, Modal, ScrollView, StyleSheet,
+  Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 
 type Props = {
@@ -109,7 +109,7 @@ export default function ModoGuiado({ visible, emocion, onCerrar, onEntradaGenera
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={cerrar}>
       <View style={styles.fondo}>
         <View style={[styles.modal, { backgroundColor: colores.fondoTarjeta }]}>
           <View style={[styles.handle, { backgroundColor: colores.textoSecundario }]} />

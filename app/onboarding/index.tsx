@@ -125,7 +125,16 @@ export default function Onboarding() {
                 placeholder="DD/MM/AAAA"
                 placeholderTextColor={colores.textoSecundario}
                 value={cumpleanos}
-                onChangeText={setCumpleanos}
+                onChangeText={(texto) => {
+                  const soloNumeros = texto.replace(/\D/g, '');
+                  let formateado = soloNumeros;
+                  if (soloNumeros.length >= 3 && soloNumeros.length <= 4) {
+                    formateado = soloNumeros.slice(0, 2) + '/' + soloNumeros.slice(2);
+                  } else if (soloNumeros.length >= 5) {
+                    formateado = soloNumeros.slice(0, 2) + '/' + soloNumeros.slice(2, 4) + '/' + soloNumeros.slice(4, 8);
+                  }
+                  setCumpleanos(formateado);
+                }}
                 keyboardType="numeric"
                 maxLength={10}
               />

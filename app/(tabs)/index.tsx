@@ -366,7 +366,7 @@ export default function Inicio() {
       </TouchableOpacity>
 
       {/* Modal reflexión completa */}
-      <Modal visible={modalReflexion} animationType="slide" transparent>
+      <Modal visible={modalReflexion} animationType="slide" transparent onRequestClose={() => setModalReflexion(false)}>
         <View style={styles.modalFondo}>
           <View style={[styles.modalReflexion, { backgroundColor: colores.fondoTarjeta }]}>
             <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
@@ -446,7 +446,7 @@ export default function Inicio() {
       ) : null}
 
       {/* Modal insight */}
-      <Modal visible={!!modalInsight} animationType="slide" transparent>
+      <Modal visible={!!modalInsight} animationType="slide" transparent onRequestClose={() => setModalInsight(null)}>
         <View style={styles.modalFondo}>
           <View style={[styles.modalReflexion, { backgroundColor: colores.fondoTarjeta }]}>
             <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />

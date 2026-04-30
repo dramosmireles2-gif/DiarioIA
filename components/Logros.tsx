@@ -84,7 +84,7 @@ export default function Logros() {
       )}
 
       {/* Modal logro */}
-      <Modal visible={!!modalLogro} animationType="fade" transparent>
+      <Modal visible={!!modalLogro} animationType="fade" transparent onRequestClose={() => setModalLogro(null)}>
         <View style={styles.modalFondo}>
           <View style={[styles.modalCard, { backgroundColor: colores.fondoTarjeta }]}>
             {modalLogro && (
