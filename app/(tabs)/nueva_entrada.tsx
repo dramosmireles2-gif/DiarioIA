@@ -111,17 +111,10 @@ export default function NuevaEntrada() {
       setImagenes([]);
       setAudioUri(null);
       setEmocionSeleccionada(null);
-      Alert.alert(
-        '✨ Entrada guardada',
-        'La IA está analizando tu entrada...',
-        [
-          { text: 'Ver reflexión', onPress: () => router.push({ pathname: '/(tabs)/entrada-detalle', params: { id: nuevaEntrada.id, analizar: 'true' } } as any) },
-          { text: 'Después', style: 'cancel' }
-        ]
-      );
-    } catch { Alert.alert('Error', 'No se pudo guardar la entrada'); }
-    setGuardando(false);
-  };
+      router.push({ pathname: '/(tabs)/entrada-detalle', params: { id: nuevaEntrada.id, analizar: 'true' } } as any);
+          } catch { Alert.alert('Error', 'No se pudo guardar la entrada'); }
+          setGuardando(false);
+        };
 
   const preguntarIA = async () => {
     if (!chatIA.trim()) return;
@@ -227,23 +220,6 @@ export default function NuevaEntrada() {
           </TouchableOpacity>
         )}
 
-        {/* Banner IA */}
-        <View style={[styles.iaBanner, { backgroundColor: colores.fondoTarjeta }]}>
-          <View style={[styles.iaIcono, { backgroundColor: colores.fondo }]}>
-            <Text style={styles.iaEmoji}>🤖</Text>
-          </View>
-          <View style={styles.iaTexto}>
-            <Text style={[styles.iaTitulo, { color: colores.texto }]}>La IA puede ayudarte a reflexionar</Text>
-            <Text style={[styles.iaSubtitulo, { color: colores.textoSecundario }]}>Analiza tus emociones, te da ideas y te acompaña.</Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.iaBoton, { backgroundColor: colores.acento }]}
-            onPress={() => setModalIA(true)}
-          >
-            <Ionicons name="sparkles" size={14} color="#fff" />
-            <Text style={styles.iaBotonTexto}>Probar IA</Text>
-          </TouchableOpacity>
-        </View>
         {/* Botón modo guiado */}
         <TouchableOpacity
           style={[styles.botonGuiado, { backgroundColor: colores.fondoTarjeta, borderColor: colores.acento + '40' }]}
@@ -399,14 +375,6 @@ const styles = StyleSheet.create({
   imagenEliminar: { position: 'absolute', top: -6, right: -6 },
   audioContainer: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, padding: 12, marginBottom: 16 },
   audioTexto: { flex: 1, fontSize: 14 },
-  iaBanner: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 14, marginBottom: 16, gap: 10 },
-  iaIcono: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  iaEmoji: { fontSize: 22 },
-  iaTexto: { flex: 1 },
-  iaTitulo: { fontSize: 13, fontWeight: 'bold' },
-  iaSubtitulo: { fontSize: 11, marginTop: 2 },
-  iaBoton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
-  iaBotonTexto: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   botonesMultimedia: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   btnMedia: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 14, padding: 10, overflow: 'hidden', minWidth: 0 },
   btnMediaTexto: { flex: 1, minWidth: 0 },

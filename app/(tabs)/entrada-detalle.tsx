@@ -1,9 +1,10 @@
 import { useTema } from '@/contexts/ThemeContext';
-import { analizarEmocion, detectarEmocion, generarEtiquetas, generarReflexion, mejorarTexto, resumirTexto } from '@/services/ia';
+import { analizarEmocion, analizarImagen, detectarEmocion, generarEtiquetas, generarReflexion, mejorarTexto, resumirTexto } from '@/services/ia';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import TextoIA from '@/components/TextoIA';
 import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Entrada = {
@@ -33,6 +34,8 @@ export default function EntradaDetalle() {
   const [sonido, setSonido] = useState<any>(null);
   const [verImagen, setVerImagen] = useState(false);
   const [imagenSeleccionada, setImagenSeleccionada] = useState<string | null>(null);
+  const [analisisImagen, setAnalisisImagen] = useState<string | null>(null);
+  const [cargandoImagen, setCargandoImagen] = useState(false);
 
   const cargarEntrada = async () => {
     setReflexion(null);
@@ -203,6 +206,19 @@ export default function EntradaDetalle() {
   const fecha = new Date(entrada.fecha);
   const palabras = entrada.texto.split(' ').filter(Boolean).length;
 
+  const handleAnalizarImagen = async (imagenUri: string) => {
+    setCargandoImagen(true);
+    try {
+      const perfilDatos = await AsyncStorage.getItem('perfil');
+      const perfil = perfilDatos ? JSON.parse(perfilDatos) : { camino: 'todo' };
+      const resultado = await analizarImagen(imagenUri, entrada?.texto || '', perfil.camino);
+      setAnalisisImagen(resultado);
+    } catch {
+      Alert.alert('Error', 'No se pudo analizar la imagen. Verifica tu conexión.');
+    }
+    setCargandoImagen(false);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colores.fondo }]}>
 
@@ -282,7 +298,7 @@ export default function EntradaDetalle() {
             {cargandoIA && <Text style={[styles.reflexionSub, { color: colores.textoSecundario }]}>Analizando...</Text>}
           </View>
           {reflexion ? (
-            <Text style={[styles.reflexionTextoContenido, { color: colores.texto }]}>{reflexion}</Text>
+            <TextoIA texto={reflexion}/>
           ) : cargandoIA ? (
             <Text style={[styles.reflexionSub, { color: colores.textoSecundario }]}>La IA está generando tu reflexión... ✨</Text>
           ) : (
@@ -324,9 +340,16 @@ export default function EntradaDetalle() {
           {entrada.imagenes && entrada.imagenes.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
               {entrada.imagenes.map((uri) => (
-                <TouchableOpacity key={uri} onPress={() => { setImagenSeleccionada(uri); setVerImagen(true); }}>
-                  <Image source={{ uri }} style={styles.imagenAdjunta} />
-                </TouchableOpacity>
+              <TouchableOpacity
+                key={uri}
+                onLongPress={() => handleAnalizarImagen(uri)}
+                onPress={() => { setImagenSeleccionada(uri); setVerImagen(true); }}
+              >
+                <Image source={{ uri }} style={styles.imagenAdjunta} />
+                <View style={[styles.imagenOverlay, { backgroundColor: colores.acento + '90' }]}>
+                  <Ionicons name="sparkles" size={12} color="#fff" />
+                </View>
+              </TouchableOpacity>
               ))}
             </ScrollView>
           ) : (
@@ -347,7 +370,27 @@ export default function EntradaDetalle() {
             <Text style={[styles.sinAdjuntos, { color: colores.textoSecundario }]}>No hay audio adjunto.</Text>
           )}
         </View>
+        {/* Análisis de imagen con IA */}
+          {analisisImagen && (
+            <View style={[styles.analisisImagenCard, { backgroundColor: colores.acento + '15', borderColor: colores.acento + '30' }]}>
+              <View style={styles.analisisImagenHeader}>
+                <Ionicons name="image-outline" size={16} color={colores.acento} />
+                <Text style={[styles.analisisImagenTitulo, { color: colores.acento }]}>Análisis de imagen con IA</Text>
+                <TouchableOpacity onPress={() => setAnalisisImagen(null)}>
+                  <Ionicons name="close" size={16} color={colores.textoSecundario} />
+                </TouchableOpacity>
+              </View>
+              <TextoIA texto={analisisImagen} />
+            </View>
+          )}
 
+          {cargandoImagen && (
+            <View style={[styles.analisisImagenCard, { backgroundColor: colores.acento + '15' }]}>
+              <Text style={[styles.analisisImagenTitulo, { color: colores.acento }]}>
+                🔍 Analizando imagen...
+              </Text>
+            </View>
+          )}
         <View style={[styles.iaCard, { backgroundColor: colores.acento + '15', borderColor: colores.acento + '30' }]}>
           <View style={styles.iaHeader}>
             <Ionicons name="bulb-outline" size={18} color={colores.acento} />
@@ -593,4 +636,8 @@ const styles = StyleSheet.create({
   modalCancelarTexto: { fontWeight: 'bold' },
   modalGuardar: { flex: 1, backgroundColor: '#7c6af7', borderRadius: 12, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
   modalGuardarTexto: { color: '#fff', fontWeight: 'bold' },
+  imagenOverlay: { position: 'absolute', bottom: 4, right: 12, borderRadius: 10, padding: 3 },
+  analisisImagenCard: { borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1 },
+  analisisImagenHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  analisisImagenTitulo: { flex: 1, fontSize: 13, fontWeight: 'bold' },
 });

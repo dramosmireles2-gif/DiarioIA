@@ -1,10 +1,13 @@
 import { useTema } from '@/contexts/ThemeContext';
 import { generarReflexion } from '@/services/ia';
+import { generarSugerencia } from '@/utils/sugerencias';
 import { Ionicons } from '@expo/vector-icons';
+import TextoIA from '@/components/TextoIA';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
 
 type Entrada = {
   id: string;
@@ -29,6 +32,7 @@ const emocionEmoji: { [key: string]: string } = {
 };
 
 export default function Inicio() {
+  const [sugerencia, setSugerencia] = useState<any>(null);
   const { colores } = useTema();
   const router = useRouter();
   const [perfil, setPerfil] = useState<any>(null);
@@ -39,6 +43,7 @@ export default function Inicio() {
   const [estadoSemana, setEstadoSemana] = useState('Sin datos');
   const [reflexionIA, setReflexionIA] = useState<string | null>(null);
   const [cargandoReflexion, setCargandoReflexion] = useState(false);
+  const [modalReflexion, setModalReflexion] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -75,6 +80,10 @@ export default function Inicio() {
         generarReflexionDiaria(JSON.parse(perfilGuardado), entradas);
       }
     }
+    const perfilData = perfilGuardado ? JSON.parse(perfilGuardado) : { camino: 'todo' };
+    const entradasData = entradasGuardadas ? JSON.parse(entradasGuardadas) : [];
+    const ultimaEmocion = entradasData.length > 0 ? entradasData[0].emocion : null;
+setSugerencia(generarSugerencia(ultimaEmocion, perfilData.camino, entradasData.length > 0));
   };
 
   const generarReflexionDiaria = async (perfilData: any, entradas: Entrada[]) => {
@@ -266,41 +275,102 @@ export default function Inicio() {
         </>
       )}
 
-      {/* Reflexión del día con IA */}
-      <View style={[styles.reflexionCard, { backgroundColor: colores.fondoTarjeta }]}>
-        <View style={styles.reflexionHeader}>
-          <Ionicons name="sparkles" size={18} color={colores.acento} />
-          <Text style={[styles.reflexionTitulo, { color: colores.texto }]}>Reflexión del día ✨</Text>
-        </View>
-        {cargandoReflexion ? (
-          <Text style={[styles.reflexionTexto, { color: colores.textoSecundario }]}>
-            La IA está generando tu reflexión personalizada...
-          </Text>
-        ) : reflexionIA ? (
-          <Text style={[styles.reflexionTexto, { color: colores.textoSecundario }]}>{reflexionIA}</Text>
-        ) : (
-          <Text style={[styles.reflexionTexto, { color: colores.textoSecundario }]}>
-            Escribe tu primera entrada para recibir reflexiones personalizadas 💜
-          </Text>
-        )}
-        {reflexionIA && !cargandoReflexion && (
-          <TouchableOpacity
-            style={[styles.reflexionBtn, { backgroundColor: colores.acento + '20' }]}
-            onPress={() => {
-              setReflexionIA(null);
-              AsyncStorage.removeItem('reflexion_diaria');
-              AsyncStorage.removeItem('reflexion_fecha');
-              if (perfil && ultimaEntrada) {
-                generarReflexionDiaria(perfil, ultimaEntrada ? [ultimaEntrada] : []);
-              }
-            }}
-          >
-            <Ionicons name="refresh-outline" size={14} color={colores.acento} />
-            <Text style={[styles.reflexionBtnTexto, { color: colores.acento }]}>Nueva reflexión</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+        {/* Reflexión del día con IA */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => reflexionIA && setModalReflexion(true)}
+          style={[styles.reflexionCard, { backgroundColor: '#7c6af7' }]}
+        >
+          <View style={styles.reflexionCardContent}>
+            <View style={{ flex: 1 }}>
+              <View style={styles.reflexionHeader}>
+                <Ionicons name="sparkles" size={14} color="#ffffff99" />
+                <Text style={[styles.reflexionLabel, { color: '#ffffff99' }]}>Reflexión del día</Text>
+                {reflexionIA && !cargandoReflexion && (
+                  <TouchableOpacity onPress={() => {
+                    setReflexionIA(null);
+                    AsyncStorage.removeItem('reflexion_diaria');
+                    AsyncStorage.removeItem('reflexion_fecha');
+                    if (perfil && ultimaEntrada) generarReflexionDiaria(perfil, [ultimaEntrada]);
+                  }}>
+                    <Ionicons name="refresh-outline" size={14} color="#ffffff99" />
+                  </TouchableOpacity>
+                )}
+              </View>
 
+              {cargandoReflexion ? (
+                <Text style={styles.reflexionTexto}>Generando tu reflexión... ✨</Text>
+              ) : reflexionIA ? (
+                <>
+                  <Text style={styles.reflexionTitulo}>
+                    {reflexionIA.replace(/[#*_]/g, '').split('\n')[0].trim().substring(0, 40)}
+                  </Text>
+                  <Text style={styles.reflexionTexto} numberOfLines={2}>
+                    {reflexionIA.replace(/[#*_]/g, '').trim().substring(0, 100)}...
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.reflexionBtn}
+                    onPress={() => setModalReflexion(true)}
+                  >
+                    <Text style={styles.reflexionBtnTexto}>Leer reflexión completa</Text>
+                    <Ionicons name="arrow-forward" size={12} color="#fff" />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={styles.reflexionTexto}>
+                  Escribe tu primera entrada para recibir reflexiones 💜
+                </Text>
+              )}
+            </View>
+            <Text style={styles.reflexionDecoracion}>📖</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Modal reflexión completa */}
+        <Modal visible={modalReflexion} animationType="slide" transparent>
+          <View style={styles.modalFondo}>
+            <View style={[styles.modalReflexion, { backgroundColor: colores.fondoTarjeta }]}>
+              <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
+              <View style={styles.modalReflexionHeader}>
+                <Ionicons name="sparkles" size={20} color={colores.acento} />
+                <Text style={[styles.modalReflexionTitulo, { color: colores.texto }]}>Reflexión del día</Text>
+                <TouchableOpacity onPress={() => setModalReflexion(false)}>
+                  <Ionicons name="close" size={24} color={colores.textoSecundario} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {reflexionIA && <TextoIA texto={reflexionIA} />}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+        {/* Para ti hoy */}
+        {sugerencia && (
+          <View style={[styles.paraTiCard, { backgroundColor: colores.fondoTarjeta }]}>
+            <View style={styles.paraTiTop}>
+              <Text style={[styles.paraTiLabel, { color: colores.textoSecundario }]}>PARA TI HOY</Text>
+              <Ionicons name="ellipsis-horizontal" size={16} color={colores.textoSecundario} />
+            </View>
+            <View style={styles.paraTiContenido}>
+              <View style={[styles.paraTiIcono, { backgroundColor: sugerencia.color + '30' }]}>
+                <Text style={styles.paraTiEmoji}>{sugerencia.emoji}</Text>
+              </View>
+              <View style={styles.paraTiTexto}>
+                <Text style={[styles.paraTiTitulo, { color: colores.texto }]}>{sugerencia.titulo}</Text>
+                <Text style={[styles.paraTiDesc, { color: colores.textoSecundario }]} numberOfLines={2}>
+                  {sugerencia.descripcion}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.paraTiBtn, { backgroundColor: sugerencia.color + '25' }]}
+                onPress={() => router.push('/(tabs)/nueva_entrada')}
+              >
+                <Text style={[styles.paraTiBtnTexto, { color: sugerencia.color }]}>{sugerencia.accion}</Text>
+                <Ionicons name="arrow-forward" size={12} color={sugerencia.color} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
     </ScrollView>
   );
 }
@@ -345,10 +415,29 @@ const styles = StyleSheet.create({
   entradaFooter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   entradaStat: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   entradaStatTexto: { fontSize: 11 },
-  reflexionCard: { borderRadius: 16, padding: 16, marginBottom: 16 },
-  reflexionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  reflexionTitulo: { fontSize: 15, fontWeight: 'bold' },
-  reflexionTexto: { fontSize: 14, lineHeight: 22, fontStyle: 'italic' },
-  reflexionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, alignSelf: 'flex-start', marginTop: 12 },
-  reflexionBtnTexto: { fontSize: 12, fontWeight: '600' },
+  reflexionCard: { borderRadius: 20, padding: 20, marginBottom: 16, overflow: 'hidden' },
+  reflexionCardContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  reflexionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  reflexionLabel: { fontSize: 12, fontWeight: '600', flex: 1 },
+  reflexionTitulo: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 6 },
+  reflexionTexto: { color: '#ffffffcc', fontSize: 13, lineHeight: 20, marginBottom: 12 },
+  reflexionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#ffffff25', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignSelf: 'flex-start' },
+  reflexionBtnTexto: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  reflexionDecoracion: { fontSize: 64, opacity: 0.3 },
+  modalFondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalReflexion: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '80%' },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  modalReflexionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  modalReflexionTitulo: { flex: 1, fontSize: 18, fontWeight: 'bold' },
+  paraTiCard: { borderRadius: 20, padding: 16, marginBottom: 16 },
+  paraTiTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  paraTiLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
+  paraTiContenido: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  paraTiIcono: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  paraTiEmoji: { fontSize: 28 },
+  paraTiTexto: { flex: 1 },
+  paraTiTitulo: { fontSize: 15, fontWeight: 'bold', marginBottom: 4 },
+  paraTiDesc: { fontSize: 12, lineHeight: 18 },
+  paraTiBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, alignItems: 'center', gap: 4 },
+  paraTiBtnTexto: { fontSize: 11, fontWeight: '700' },
 });

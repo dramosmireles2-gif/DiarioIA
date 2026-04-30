@@ -34,6 +34,70 @@ const llamarClaude = async (prompt: string, sistema: string): Promise<string> =>
     throw error;
   }
 };
+const llamarClaudeConImagen = async (prompt: string, sistema: string, imagenUri: string): Promise<string> => {
+  try {
+    const response = await fetch(imagenUri);
+    const blob = await response.blob();
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    const mimeType = imagenUri.includes('.png') ? 'image/png' : 'image/jpeg';
+
+    const response2 = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY || '',
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 1024,
+        system: sistema,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: mimeType,
+                  data: base64,
+                },
+              },
+              {
+                type: 'text',
+                text: prompt,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response2.ok) {
+      if (response2.status === 401) throw new Error('API key inválida');
+      if (response2.status === 429) throw new Error('Demasiadas solicitudes. Espera un momento');
+      throw new Error('Error al conectar con la IA');
+    }
+
+    const data = await response2.json();
+    return data.content[0].text;
+  } catch (error: any) {
+    if (error.message === 'Network request failed') {
+      throw new Error('Sin conexión a internet. Verifica tu red e intenta de nuevo');
+    }
+    throw error;
+  }
+};
 
 const getSistemaEspiritual = (camino: string) => {
   const estilos: { [key: string]: string } = {
@@ -206,4 +270,16 @@ export const convertirRespuestasAEntrada = async (
   const prompt = `Transforma esta conversación en una entrada de diario personal hermosa, en primera persona, que fluya naturalmente. Mantén las emociones y pensamientos originales del usuario:\n\n${dialogo}\n\nEscribe solo la entrada de diario, sin títulos ni explicaciones.`;
   
   return llamarClaude(prompt, sistema);
+};
+export const analizarImagen = async (imagenUri: string, texto: string, camino: string): Promise<string> => {
+  const sistema = getSistemaEspiritual(camino);
+  const prompt = `El usuario compartió esta imagen en su diario personal${texto ? ` junto con este texto: "${texto}"` : ''}.
+
+Analiza la imagen y da una reflexión personalizada y empática que incluya:
+1. Lo que observas en la imagen
+2. Las emociones o sentimientos que transmite
+3. Una reflexión profunda conectada con el camino espiritual
+
+Sé cálido, observador y profundo.`;
+  return llamarClaudeConImagen(prompt, sistema, imagenUri);
 };
