@@ -1,5 +1,6 @@
 import BloqueoConfig from '@/components/BloqueoConfig';
 import Estadisticas from '@/components/Estadisticas';
+import Logros from '@/components/Logros';
 import Recordatorio from '@/components/Recordatorio';
 import { useTema } from '@/contexts/ThemeContext';
 import { generarInsights } from '@/services/ia';
@@ -214,7 +215,13 @@ export default function Perfil() {
           <View style={[styles.separador, { backgroundColor: colores.fondo }]} />
           <Recordatorio />
         </View>
-
+        {/* Logros */}
+        <View style={[styles.seccionCard, { backgroundColor: colores.fondoTarjeta }]}>
+          <Text style={[styles.seccionTitulo, { color: colores.texto }]}>🏆 Mis Logros</Text>
+          <View style={{ marginTop: 12 }}>
+            <Logros />
+          </View>
+        </View>
         {/* Estadísticas */}
         <View style={[styles.seccionCard, { backgroundColor: colores.fondoTarjeta }]}>
           <View style={styles.seccionHeader}>

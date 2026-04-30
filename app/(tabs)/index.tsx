@@ -31,6 +31,7 @@ const emocionEmoji: { [key: string]: string } = {
 };
 
 export default function Inicio() {
+  const [esCumpleanos, setEsCumpleanos] = useState(false);
   const [sugerencia, setSugerencia] = useState<any>(null);
   const [insights, setInsights] = useState<any>(null);
   const [cargandoInsights, setCargandoInsights] = useState(false);
@@ -56,6 +57,21 @@ export default function Inicio() {
     const fechaReflexion = await AsyncStorage.getItem('reflexion_fecha');
 
     if (perfilGuardado) setPerfil(JSON.parse(perfilGuardado));
+    // Verificar cumpleaños
+    if (perfilGuardado) {
+      const p = JSON.parse(perfilGuardado);
+      if (p.cumpleanos) {
+        const partes = p.cumpleanos.split('/');
+        if (partes.length === 3) {
+          const hoyD = new Date();
+          const dia = parseInt(partes[0]);
+          const mes = parseInt(partes[1]) - 1;
+          if (hoyD.getDate() === dia && hoyD.getMonth() === mes) {
+            setEsCumpleanos(true);
+          }
+        }
+      }
+}
 
     const perfilData = perfilGuardado ? JSON.parse(perfilGuardado) : { camino: 'todo' };
     const entradasData = entradasGuardadas ? JSON.parse(entradasGuardadas) : [];
@@ -166,7 +182,22 @@ export default function Inicio() {
           <Text style={[styles.saludoSub2, { color: colores.textoSecundario }]}>Tu bienestar es importante ✨</Text>
         </View>
       </View>
-
+      {/* Card de cumpleaños */}
+      {esCumpleanos && (
+        <View style={[styles.cumpleanosCard, { backgroundColor: '#f5c518' }]}>
+          <Text style={styles.cumpleanosEmoji}>🎂</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cumpleanosTitulo}>¡Feliz cumpleaños, {perfil?.nombre}! 🎉</Text>
+            <Text style={styles.cumpleanosDesc}>Hoy es un día especial. ¿Cómo te sientes en este día tan importante?</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.cumpleanosBtn}
+            onPress={() => router.push('/(tabs)/nueva_entrada')}
+          >
+            <Ionicons name="pencil" size={18} color="#f5c518" />
+          </TouchableOpacity>
+        </View>
+      )}
       {/* Selector de emoción */}
       <View style={[styles.card, { backgroundColor: colores.fondoTarjeta }]}>
         <Text style={[styles.cardTitulo, { color: colores.texto }]}>Elige tu estado de ánimo</Text>
@@ -572,4 +603,9 @@ const styles = StyleSheet.create({
   paraTiDesc: { fontSize: 12, lineHeight: 18 },
   paraTiBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, alignItems: 'center', gap: 4 },
   paraTiBtnTexto: { fontSize: 11, fontWeight: '700' },
+  cumpleanosCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 16, marginBottom: 16 },
+  cumpleanosEmoji: { fontSize: 40 },
+  cumpleanosTitulo: { color: '#1a1a2e', fontSize: 15, fontWeight: 'bold', marginBottom: 4 },
+  cumpleanosDesc: { color: '#1a1a2e99', fontSize: 12 },
+  cumpleanosBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
 });
