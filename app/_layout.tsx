@@ -17,30 +17,28 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [bloqueado, setBloqueado] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const [onboardingCompletado, setOnboardingCompletado] = useState(true);
 
   useEffect(() => {
     verificarEstado();
   }, []);
 
-  const verificarEstado = async () => {
-    try {
-      const onboardingCompletado = await AsyncStorage.getItem('onboarding_completado');
-      const bloqueo = await AsyncStorage.getItem('bloqueo');
+const verificarEstado = async () => {
+  try {
+    const onboardingCompletado = await AsyncStorage.getItem('onboarding_completado');
+    const bloqueo = await AsyncStorage.getItem('bloqueo');
 
-      if (bloqueo) {
-        const config = JSON.parse(bloqueo);
-        setBloqueado(config.activo);
-      }
-
-      setCargando(false);
-
-      if (!onboardingCompletado) {
-        router.replace('/onboarding');
-      }
-    } catch {
-      setCargando(false);
+    if (bloqueo) {
+      const config = JSON.parse(bloqueo);
+      setBloqueado(config.activo);
     }
-  };
+
+    setOnboardingCompletado(!!onboardingCompletado);
+    setCargando(false);
+  } catch {
+    setCargando(false);
+  }
+};
 
   if (cargando) return (
     <View style={{ flex: 1, backgroundColor: '#1a1a2e', alignItems: 'center', justifyContent: 'center' }}>
@@ -53,11 +51,15 @@ export default function RootLayout() {
   return (
     <AppThemeProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
+      <Stack>
+        <Stack.Screen
+          name="(tabs)"
+          options={{ headerShown: false }}
+          redirect={!onboardingCompletado}
+        />
+        <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      </Stack>
         {bloqueado && (
           <BloqueoApp onDesbloqueado={() => setBloqueado(false)} />
         )}
