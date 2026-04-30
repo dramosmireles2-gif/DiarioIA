@@ -29,7 +29,7 @@ export default function Onboarding() {
   const [paso, setPaso] = useState(0);
   const [nombre, setNombre] = useState('');
   const [edad, setEdad] = useState('');
-  const [correo, setCorreo] = useState('');
+  const [cumpleanos, setCumpleanos] = useState('');
   const [genero, setGenero] = useState('');
   const [caminoSeleccionado, setCaminoSeleccionado] = useState<string | null>(null);
 
@@ -39,8 +39,7 @@ export default function Onboarding() {
     if (paso === slides.length) {
       if (!nombre.trim()) { Alert.alert('Campo requerido', 'Por favor escribe tu nombre'); return false; }
       if (!edad.trim()) { Alert.alert('Campo requerido', 'Por favor escribe tu edad'); return false; }
-      if (!correo.trim()) { Alert.alert('Campo requerido', 'Por favor escribe tu correo'); return false; }
-      if (!correo.includes('@')) { Alert.alert('Correo inválido', 'Por favor escribe un correo válido'); return false; }
+      if (!cumpleanos.trim()) { Alert.alert('Campo requerido', 'Por favor escribe tu fecha de cumpleaños'); return false; }
     }
     if (paso === slides.length + 1) {
       if (!genero) { Alert.alert('Campo requerido', 'Por favor selecciona tu género'); return false; }
@@ -64,7 +63,7 @@ export default function Onboarding() {
     if (!validarPaso()) return;
     await AsyncStorage.setItem('onboarding_completado', 'true');
     await AsyncStorage.setItem('perfil', JSON.stringify({
-      nombre, edad, correo, genero,
+      nombre, edad, cumpleanos, genero,
       camino: caminoSeleccionado,
       foto: null,
     }));
@@ -120,15 +119,15 @@ export default function Onboarding() {
               />
             </View>
             <View style={styles.inputWrapper}>
-              <Text style={[styles.inputLabel, { color: colores.textoSecundario }]}>Correo electrónico *</Text>
+              <Text style={[styles.inputLabel, { color: colores.textoSecundario }]}>Fecha de cumpleaños *</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto, borderColor: correo ? colores.acento : 'transparent' }]}
-                placeholder="tu@correo.com"
+                style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto, borderColor: cumpleanos ? colores.acento : 'transparent' }]}
+                placeholder="DD/MM/AAAA"
                 placeholderTextColor={colores.textoSecundario}
-                value={correo}
-                onChangeText={setCorreo}
-                keyboardType="email-address"
-                autoCapitalize="none"
+                value={cumpleanos}
+                onChangeText={setCumpleanos}
+                keyboardType="numeric"
+                maxLength={10}
               />
             </View>
           </View>

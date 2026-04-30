@@ -1,13 +1,12 @@
+import TextoIA from '@/components/TextoIA';
 import { useTema } from '@/contexts/ThemeContext';
-import { generarReflexion } from '@/services/ia';
+import { generarInsights, generarReflexion } from '@/services/ia';
 import { generarSugerencia } from '@/utils/sugerencias';
 import { Ionicons } from '@expo/vector-icons';
-import TextoIA from '@/components/TextoIA';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Entrada = {
   id: string;
@@ -33,6 +32,9 @@ const emocionEmoji: { [key: string]: string } = {
 
 export default function Inicio() {
   const [sugerencia, setSugerencia] = useState<any>(null);
+  const [insights, setInsights] = useState<any>(null);
+  const [cargandoInsights, setCargandoInsights] = useState(false);
+  const [modalInsight, setModalInsight] = useState<any>(null);
   const { colores } = useTema();
   const router = useRouter();
   const [perfil, setPerfil] = useState<any>(null);
@@ -45,11 +47,7 @@ export default function Inicio() {
   const [cargandoReflexion, setCargandoReflexion] = useState(false);
   const [modalReflexion, setModalReflexion] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      cargarDatos();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { cargarDatos(); }, []));
 
   const cargarDatos = async () => {
     const perfilGuardado = await AsyncStorage.getItem('perfil');
@@ -59,39 +57,55 @@ export default function Inicio() {
 
     if (perfilGuardado) setPerfil(JSON.parse(perfilGuardado));
 
-    if (entradasGuardadas) {
-      const entradas: Entrada[] = JSON.parse(entradasGuardadas);
-      setTotalEntradas(entradas.length);
-      if (entradas.length > 0) {
-        const ordenadas = [...entradas].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-        setUltimaEntrada(ordenadas[0]);
-        calcularRacha(ordenadas);
-        calcularEstadoSemana(entradas);
-      }
+    const perfilData = perfilGuardado ? JSON.parse(perfilGuardado) : { camino: 'todo' };
+    const entradasData = entradasGuardadas ? JSON.parse(entradasGuardadas) : [];
+
+    if (entradasData.length > 0) {
+      setTotalEntradas(entradasData.length);
+      const ordenadas = [...entradasData].sort((a: Entrada, b: Entrada) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+      setUltimaEntrada(ordenadas[0]);
+      calcularRacha(ordenadas);
+      calcularEstadoSemana(entradasData);
     }
 
-    // Cargar reflexión del día (si ya se generó hoy)
     const hoy = new Date().toDateString();
     if (reflexionGuardada && fechaReflexion === hoy) {
       setReflexionIA(reflexionGuardada);
-    } else if (perfilGuardado && entradasGuardadas) {
-      const entradas: Entrada[] = JSON.parse(entradasGuardadas);
-      if (entradas.length > 0) {
-        generarReflexionDiaria(JSON.parse(perfilGuardado), entradas);
-      }
+    } else if (entradasData.length > 0) {
+      generarReflexionDiaria(perfilData, entradasData);
     }
-    const perfilData = perfilGuardado ? JSON.parse(perfilGuardado) : { camino: 'todo' };
-    const entradasData = entradasGuardadas ? JSON.parse(entradasGuardadas) : [];
+
     const ultimaEmocion = entradasData.length > 0 ? entradasData[0].emocion : null;
-setSugerencia(generarSugerencia(ultimaEmocion, perfilData.camino, entradasData.length > 0));
+    setSugerencia(generarSugerencia(ultimaEmocion, perfilData.camino, entradasData.length > 0));
+
+    if (entradasData.length > 0) {
+      cargarInsights(entradasData, perfilData);
+    }
+  };
+
+  const cargarInsights = async (entradas: Entrada[], perfilData: any) => {
+    setCargandoInsights(true);
+    try {
+      const insightsIA = await generarInsights(
+        entradas.slice(0, 10).map((e) => ({
+          texto: e.texto,
+          emocion: e.emocion,
+          fecha: e.fecha,
+        })),
+        perfilData.camino
+      );
+      setInsights(insightsIA);
+    } catch {
+      console.log('Error cargando insights');
+    }
+    setCargandoInsights(false);
   };
 
   const generarReflexionDiaria = async (perfilData: any, entradas: Entrada[]) => {
     setCargandoReflexion(true);
     try {
-      const ultimaEntradaTexto = entradas[0]?.texto || 'Hoy es un nuevo día';
       const reflexion = await generarReflexion(
-        `Genera una reflexión inspiradora para comenzar el día. Contexto de mi última entrada: "${ultimaEntradaTexto.substring(0, 200)}"`,
+        `Genera una reflexión inspiradora para comenzar el día. Contexto de mi última entrada: "${entradas[0]?.texto.substring(0, 200)}"`,
         perfilData.camino || 'todo',
         entradas[0]?.emocion || null
       );
@@ -109,11 +123,9 @@ setSugerencia(generarSugerencia(ultimaEmocion, perfilData.camino, entradasData.l
       .map((e) => new Date(e.fecha).toDateString())
       .filter((v, i, a) => a.indexOf(v) === i)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-
     let rachaTemp = 0;
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-
     for (let i = 0; i < fechas.length; i++) {
       const fecha = new Date(fechas[i]);
       fecha.setHours(0, 0, 0, 0);
@@ -275,102 +287,202 @@ setSugerencia(generarSugerencia(ultimaEmocion, perfilData.camino, entradasData.l
         </>
       )}
 
-        {/* Reflexión del día con IA */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => reflexionIA && setModalReflexion(true)}
-          style={[styles.reflexionCard, { backgroundColor: '#7c6af7' }]}
-        >
-          <View style={styles.reflexionCardContent}>
-            <View style={{ flex: 1 }}>
-              <View style={styles.reflexionHeader}>
-                <Ionicons name="sparkles" size={14} color="#ffffff99" />
-                <Text style={[styles.reflexionLabel, { color: '#ffffff99' }]}>Reflexión del día</Text>
-                {reflexionIA && !cargandoReflexion && (
-                  <TouchableOpacity onPress={() => {
-                    setReflexionIA(null);
-                    AsyncStorage.removeItem('reflexion_diaria');
-                    AsyncStorage.removeItem('reflexion_fecha');
-                    if (perfil && ultimaEntrada) generarReflexionDiaria(perfil, [ultimaEntrada]);
-                  }}>
-                    <Ionicons name="refresh-outline" size={14} color="#ffffff99" />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {cargandoReflexion ? (
-                <Text style={styles.reflexionTexto}>Generando tu reflexión... ✨</Text>
-              ) : reflexionIA ? (
-                <>
-                  <Text style={styles.reflexionTitulo}>
-                    {reflexionIA.replace(/[#*_]/g, '').split('\n')[0].trim().substring(0, 40)}
-                  </Text>
-                  <Text style={styles.reflexionTexto} numberOfLines={2}>
-                    {reflexionIA.replace(/[#*_]/g, '').trim().substring(0, 100)}...
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.reflexionBtn}
-                    onPress={() => setModalReflexion(true)}
-                  >
-                    <Text style={styles.reflexionBtnTexto}>Leer reflexión completa</Text>
-                    <Ionicons name="arrow-forward" size={12} color="#fff" />
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <Text style={styles.reflexionTexto}>
-                  Escribe tu primera entrada para recibir reflexiones 💜
-                </Text>
+      {/* Reflexión del día con IA */}
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => reflexionIA && setModalReflexion(true)}
+        style={[styles.reflexionCard, { backgroundColor: '#7c6af7' }]}
+      >
+        <View style={styles.reflexionCardContent}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.reflexionHeader}>
+              <Ionicons name="sparkles" size={14} color="#ffffff99" />
+              <Text style={[styles.reflexionLabel, { color: '#ffffff99' }]}>Reflexión del día</Text>
+              {reflexionIA && !cargandoReflexion && (
+                <TouchableOpacity onPress={() => {
+                  setReflexionIA(null);
+                  AsyncStorage.removeItem('reflexion_diaria');
+                  AsyncStorage.removeItem('reflexion_fecha');
+                  if (perfil && ultimaEntrada) generarReflexionDiaria(perfil, [ultimaEntrada]);
+                }}>
+                  <Ionicons name="refresh-outline" size={14} color="#ffffff99" />
+                </TouchableOpacity>
               )}
             </View>
-            <Text style={styles.reflexionDecoracion}>📖</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Modal reflexión completa */}
-        <Modal visible={modalReflexion} animationType="slide" transparent>
-          <View style={styles.modalFondo}>
-            <View style={[styles.modalReflexion, { backgroundColor: colores.fondoTarjeta }]}>
-              <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
-              <View style={styles.modalReflexionHeader}>
-                <Ionicons name="sparkles" size={20} color={colores.acento} />
-                <Text style={[styles.modalReflexionTitulo, { color: colores.texto }]}>Reflexión del día</Text>
-                <TouchableOpacity onPress={() => setModalReflexion(false)}>
-                  <Ionicons name="close" size={24} color={colores.textoSecundario} />
-                </TouchableOpacity>
-              </View>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {reflexionIA && <TextoIA texto={reflexionIA} />}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-        {/* Para ti hoy */}
-        {sugerencia && (
-          <View style={[styles.paraTiCard, { backgroundColor: colores.fondoTarjeta }]}>
-            <View style={styles.paraTiTop}>
-              <Text style={[styles.paraTiLabel, { color: colores.textoSecundario }]}>PARA TI HOY</Text>
-              <Ionicons name="ellipsis-horizontal" size={16} color={colores.textoSecundario} />
-            </View>
-            <View style={styles.paraTiContenido}>
-              <View style={[styles.paraTiIcono, { backgroundColor: sugerencia.color + '30' }]}>
-                <Text style={styles.paraTiEmoji}>{sugerencia.emoji}</Text>
-              </View>
-              <View style={styles.paraTiTexto}>
-                <Text style={[styles.paraTiTitulo, { color: colores.texto }]}>{sugerencia.titulo}</Text>
-                <Text style={[styles.paraTiDesc, { color: colores.textoSecundario }]} numberOfLines={2}>
-                  {sugerencia.descripcion}
+            {cargandoReflexion ? (
+              <Text style={styles.reflexionTexto}>Generando tu reflexión... ✨</Text>
+            ) : reflexionIA ? (
+              <>
+                <Text style={styles.reflexionTitulo}>
+                  {reflexionIA.replace(/[#*_]/g, '').split('\n')[0].trim().substring(0, 40)}
                 </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.paraTiBtn, { backgroundColor: sugerencia.color + '25' }]}
-                onPress={() => router.push('/(tabs)/nueva_entrada')}
-              >
-                <Text style={[styles.paraTiBtnTexto, { color: sugerencia.color }]}>{sugerencia.accion}</Text>
-                <Ionicons name="arrow-forward" size={12} color={sugerencia.color} />
+                <Text style={styles.reflexionTexto} numberOfLines={2}>
+                  {reflexionIA.replace(/[#*_]/g, '').trim().substring(0, 100)}...
+                </Text>
+                <TouchableOpacity style={styles.reflexionBtn} onPress={() => setModalReflexion(true)}>
+                  <Text style={styles.reflexionBtnTexto}>Leer reflexión completa</Text>
+                  <Ionicons name="arrow-forward" size={12} color="#fff" />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={styles.reflexionTexto}>
+                Escribe tu primera entrada para recibir reflexiones 💜
+              </Text>
+            )}
+          </View>
+          <Text style={styles.reflexionDecoracion}>📖</Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* Modal reflexión completa */}
+      <Modal visible={modalReflexion} animationType="slide" transparent>
+        <View style={styles.modalFondo}>
+          <View style={[styles.modalReflexion, { backgroundColor: colores.fondoTarjeta }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
+            <View style={styles.modalReflexionHeader}>
+              <Ionicons name="sparkles" size={20} color={colores.acento} />
+              <Text style={[styles.modalReflexionTitulo, { color: colores.texto }]}>Reflexión del día</Text>
+              <TouchableOpacity onPress={() => setModalReflexion(false)}>
+                <Ionicons name="close" size={24} color={colores.textoSecundario} />
               </TouchableOpacity>
             </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {reflexionIA && <TextoIA texto={reflexionIA} />}
+            </ScrollView>
           </View>
+        </View>
+      </Modal>
+
+      {/* Insights de IA */}
+      <View style={styles.seccionHeader}>
+        <Text style={[styles.seccionTitulo, { color: colores.texto }]}>🧠 Tus insights</Text>
+        {cargandoInsights && (
+          <Text style={[styles.verTodosTexto, { color: colores.textoSecundario }]}>Analizando...</Text>
         )}
+      </View>
+
+      {insights ? (
+        <View style={styles.insightsGrid}>
+          <TouchableOpacity
+            style={[styles.insightCard, { backgroundColor: '#7c6af722' }]}
+            onPress={() => setModalInsight({ emoji: '😌', titulo: 'Estado emocional', valor: insights.estadoEmocional, descripcion: insights.descripcionEstado, color: '#7c6af7' })}
+          >
+            <Text style={styles.insightEmoji}>😌</Text>
+            <Text style={[styles.insightLabel, { color: colores.textoSecundario }]}>Estado emocional</Text>
+            <Text style={[styles.insightValor, { color: '#7c6af7' }]} numberOfLines={1}>{insights.estadoEmocional}</Text>
+            <Text style={[styles.insightDesc, { color: colores.textoSecundario }]} numberOfLines={2}>{insights.descripcionEstado}</Text>
+            <View style={[styles.insightVerMas, { backgroundColor: '#7c6af720' }]}>
+              <Text style={[styles.insightVerMasTexto, { color: '#7c6af7' }]}>Ver más</Text>
+              <Ionicons name="arrow-forward" size={10} color="#7c6af7" />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.insightCard, { backgroundColor: '#4ecdc422' }]}
+            onPress={() => setModalInsight({ emoji: '🌙', titulo: 'Momento favorito', valor: insights.momentoFavorito, descripcion: insights.descripcionMomento, color: '#4ecdc4' })}
+          >
+            <Text style={styles.insightEmoji}>🌙</Text>
+            <Text style={[styles.insightLabel, { color: colores.textoSecundario }]}>Momento favorito</Text>
+            <Text style={[styles.insightValor, { color: '#4ecdc4' }]} numberOfLines={1}>{insights.momentoFavorito}</Text>
+            <Text style={[styles.insightDesc, { color: colores.textoSecundario }]} numberOfLines={2}>{insights.descripcionMomento}</Text>
+            <View style={[styles.insightVerMas, { backgroundColor: '#4ecdc420' }]}>
+              <Text style={[styles.insightVerMasTexto, { color: '#4ecdc4' }]}>Ver más</Text>
+              <Ionicons name="arrow-forward" size={10} color="#4ecdc4" />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.insightCard, { backgroundColor: '#ff6b6b22' }]}
+            onPress={() => setModalInsight({ emoji: '🎯', titulo: 'Enfoque principal', valor: insights.enfoquePrincipal, descripcion: insights.descripcionEnfoque, color: '#ff6b6b' })}
+          >
+            <Text style={styles.insightEmoji}>🎯</Text>
+            <Text style={[styles.insightLabel, { color: colores.textoSecundario }]}>Enfoque principal</Text>
+            <Text style={[styles.insightValor, { color: '#ff6b6b' }]} numberOfLines={1}>{insights.enfoquePrincipal}</Text>
+            <Text style={[styles.insightDesc, { color: colores.textoSecundario }]} numberOfLines={2}>{insights.descripcionEnfoque}</Text>
+            <View style={[styles.insightVerMas, { backgroundColor: '#ff6b6b20' }]}>
+              <Text style={[styles.insightVerMasTexto, { color: '#ff6b6b' }]}>Ver más</Text>
+              <Ionicons name="arrow-forward" size={10} color="#ff6b6b" />
+            </View>
+          </TouchableOpacity>
+        </View>
+      ) : !cargandoInsights && totalEntradas === 0 ? (
+        <View style={[styles.insightVacio, { backgroundColor: colores.fondoTarjeta }]}>
+          <Text style={styles.insightVacioEmoji}>🧠</Text>
+          <Text style={[styles.insightVacioTexto, { color: colores.textoSecundario }]}>
+            Escribe al menos una entrada para ver tus insights
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Modal insight */}
+      <Modal visible={!!modalInsight} animationType="slide" transparent>
+        <View style={styles.modalFondo}>
+          <View style={[styles.modalReflexion, { backgroundColor: colores.fondoTarjeta }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
+            {modalInsight && (
+              <>
+                <View style={[styles.modalInsightHeader, { backgroundColor: modalInsight.color + '15' }]}>
+                  <Text style={styles.modalInsightEmoji}>{modalInsight.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.modalInsightLabel, { color: modalInsight.color }]}>{modalInsight.titulo}</Text>
+                    <Text style={[styles.modalInsightValor, { color: colores.texto }]}>{modalInsight.valor}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setModalInsight(null)}>
+                    <Ionicons name="close" size={24} color={colores.textoSecundario} />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 16 }}>
+                  <Text style={[styles.modalInsightDesc, { color: colores.textoSecundario }]}>
+                    {modalInsight.descripcion}
+                  </Text>
+                  <View style={[styles.modalInsightExtra, { backgroundColor: modalInsight.color + '10', borderColor: modalInsight.color + '30' }]}>
+                    <Ionicons name="sparkles" size={16} color={modalInsight.color} />
+                    <Text style={[styles.modalInsightExtraTexto, { color: colores.texto }]}>
+                      Este insight está basado en tus últimas entradas del diario y tu camino espiritual.
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.modalInsightBtn, { backgroundColor: modalInsight.color }]}
+                    onPress={() => { setModalInsight(null); router.push('/(tabs)/nueva_entrada'); }}
+                  >
+                    <Ionicons name="pencil-outline" size={16} color="#fff" />
+                    <Text style={styles.modalInsightBtnTexto}>Escribir sobre esto</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Para ti hoy */}
+      {sugerencia && (
+        <View style={[styles.paraTiCard, { backgroundColor: colores.fondoTarjeta }]}>
+          <View style={styles.paraTiTop}>
+            <Text style={[styles.paraTiLabel, { color: colores.textoSecundario }]}>PARA TI HOY</Text>
+            <Ionicons name="ellipsis-horizontal" size={16} color={colores.textoSecundario} />
+          </View>
+          <View style={styles.paraTiContenido}>
+            <View style={[styles.paraTiIcono, { backgroundColor: sugerencia.color + '30' }]}>
+              <Text style={styles.paraTiEmoji}>{sugerencia.emoji}</Text>
+            </View>
+            <View style={styles.paraTiTexto}>
+              <Text style={[styles.paraTiTitulo, { color: colores.texto }]}>{sugerencia.titulo}</Text>
+              <Text style={[styles.paraTiDesc, { color: colores.textoSecundario }]} numberOfLines={2}>
+                {sugerencia.descripcion}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.paraTiBtn, { backgroundColor: sugerencia.color + '25' }]}
+              onPress={() => router.push('/(tabs)/nueva_entrada')}
+            >
+              <Text style={[styles.paraTiBtnTexto, { color: sugerencia.color }]}>{sugerencia.accion}</Text>
+              <Ionicons name="arrow-forward" size={12} color={sugerencia.color} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
     </ScrollView>
   );
 }
@@ -429,6 +541,26 @@ const styles = StyleSheet.create({
   modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   modalReflexionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   modalReflexionTitulo: { flex: 1, fontSize: 18, fontWeight: 'bold' },
+  insightsGrid: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  insightCard: { flex: 1, borderRadius: 18, padding: 12, gap: 4 },
+  insightEmoji: { fontSize: 26, marginBottom: 4 },
+  insightLabel: { fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600' },
+  insightValor: { fontSize: 13, fontWeight: 'bold' },
+  insightDesc: { fontSize: 10, lineHeight: 14 },
+  insightVerMas: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20, alignSelf: 'flex-start', marginTop: 4 },
+  insightVerMasTexto: { fontSize: 10, fontWeight: '700' },
+  insightVacio: { borderRadius: 16, padding: 20, alignItems: 'center', gap: 8, marginBottom: 16 },
+  insightVacioEmoji: { fontSize: 36 },
+  insightVacioTexto: { fontSize: 13, textAlign: 'center' },
+  modalInsightHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 16 },
+  modalInsightEmoji: { fontSize: 40 },
+  modalInsightLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  modalInsightValor: { fontSize: 20, fontWeight: 'bold', marginTop: 2 },
+  modalInsightDesc: { fontSize: 15, lineHeight: 24, marginBottom: 16 },
+  modalInsightExtra: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1 },
+  modalInsightExtraTexto: { flex: 1, fontSize: 13, lineHeight: 20 },
+  modalInsightBtn: { borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20 },
+  modalInsightBtnTexto: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
   paraTiCard: { borderRadius: 20, padding: 16, marginBottom: 16 },
   paraTiTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   paraTiLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },

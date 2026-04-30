@@ -183,51 +183,6 @@ export default function Perfil() {
           </View>
         </View>
 
-        {/* Insights de IA */}
-        <View style={[styles.seccionCard, { backgroundColor: colores.fondoTarjeta }]}>
-          <View style={styles.seccionHeader}>
-            <Text style={[styles.seccionTitulo, { color: colores.texto }]}>🧠 Insights de IA</Text>
-            <TouchableOpacity style={styles.verMas}>
-              <Text style={[styles.verMasTexto, { color: colores.acento }]}>
-                {cargandoInsights ? 'Analizando...' : 'Ver más'}
-              </Text>
-              {!cargandoInsights && <Ionicons name="chevron-forward" size={14} color={colores.acento} />}
-            </TouchableOpacity>
-          </View>
-          <View style={styles.insightsGrid}>
-            <View style={[styles.insightTarjeta, { backgroundColor: '#7c6af722' }]}>
-              <Text style={styles.insightEmoji}>😌</Text>
-              <Text style={[styles.insightLabel, { color: colores.textoSecundario }]}>Estado emocional</Text>
-              <Text style={[styles.insightValor, { color: colores.texto }]}>
-                {insights ? insights.estadoEmocional : cargandoInsights ? '...' : caminoActual?.titulo || 'Sin datos'}
-              </Text>
-              <Text style={[styles.insightDesc, { color: colores.textoSecundario }]}>
-                {insights ? insights.descripcionEstado : caminoActual?.descripcion || 'Escribe entradas para ver insights'}
-              </Text>
-            </View>
-            <View style={[styles.insightTarjeta, { backgroundColor: '#4ecdc422' }]}>
-              <Text style={styles.insightEmoji}>🌙</Text>
-              <Text style={[styles.insightLabel, { color: colores.textoSecundario }]}>Momento favorito</Text>
-              <Text style={[styles.insightValor, { color: colores.texto }]}>
-                {insights ? insights.momentoFavorito : cargandoInsights ? '...' : `${totalEntradas} entradas`}
-              </Text>
-              <Text style={[styles.insightDesc, { color: colores.textoSecundario }]}>
-                {insights ? insights.descripcionMomento : 'Sigue escribiendo cada día.'}
-              </Text>
-            </View>
-          </View>
-          {insights && (
-            <View style={[styles.insightExtra, { backgroundColor: '#ff6b6b22' }]}>
-              <Text style={styles.insightEmoji}>🎯</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.insightLabel, { color: colores.textoSecundario }]}>Enfoque principal</Text>
-                <Text style={[styles.insightValor, { color: colores.texto }]}>{insights.enfoquePrincipal}</Text>
-                <Text style={[styles.insightDesc, { color: colores.textoSecundario }]}>{insights.descripcionEnfoque}</Text>
-              </View>
-            </View>
-          )}
-        </View>
-
         {/* Ajustes */}
         <View style={[styles.seccionCard, { backgroundColor: colores.fondoTarjeta }]}>
           <View style={styles.ajusteFila}>
@@ -264,10 +219,6 @@ export default function Perfil() {
         <View style={[styles.seccionCard, { backgroundColor: colores.fondoTarjeta }]}>
           <View style={styles.seccionHeader}>
             <Text style={[styles.seccionTitulo, { color: colores.texto }]}>📊 Mis Estadísticas</Text>
-            <TouchableOpacity style={styles.verMas}>
-              <Text style={[styles.verMasTexto, { color: colores.acento }]}>Ver todas</Text>
-              <Ionicons name="chevron-forward" size={14} color={colores.acento} />
-            </TouchableOpacity>
           </View>
           <Estadisticas />
         </View>
