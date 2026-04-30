@@ -3,7 +3,7 @@ import { ThemeProvider as AppThemeProvider } from '@/contexts/ThemeContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -23,12 +23,23 @@ export default function RootLayout() {
   }, []);
 
   const verificarEstado = async () => {
-    const bloqueo = await AsyncStorage.getItem('bloqueo');
-    if (bloqueo) {
-      const config = JSON.parse(bloqueo);
-      setBloqueado(config.activo);
+    try {
+      const onboardingCompletado = await AsyncStorage.getItem('onboarding_completado');
+      const bloqueo = await AsyncStorage.getItem('bloqueo');
+
+      if (bloqueo) {
+        const config = JSON.parse(bloqueo);
+        setBloqueado(config.activo);
+      }
+
+      setCargando(false);
+
+      if (!onboardingCompletado) {
+        router.replace('/onboarding');
+      }
+    } catch {
+      setCargando(false);
     }
-    setCargando(false);
   };
 
   if (cargando) return (
