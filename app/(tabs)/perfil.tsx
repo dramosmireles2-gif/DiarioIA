@@ -288,6 +288,10 @@ export default function Perfil() {
           <Text style={[styles.terminosTexto, { color: colores.textoSecundario }]}>Términos de uso y Política de privacidad</Text>
           <Ionicons name="chevron-forward" size={14} color={colores.textoSecundario} />
         </TouchableOpacity>
+        {/* Versión */}
+      <Text style={[styles.version, { color: colores.textoSecundario }]}>
+        Mi Diario con IA — Versión 1.0.0
+      </Text>
       </ScrollView>
     );
   }
@@ -416,7 +420,8 @@ const styles = StyleSheet.create({
   botonGuardar: { backgroundColor: '#7c6af7', borderRadius: 12, padding: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8, marginBottom: 60 },
   botonGuardarTexto: { color: '#fff', fontWeight: 'bold' },
   terminos: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 14, marginBottom: 16 },
- terminosTexto: { flex: 1, fontSize: 13 },
- eliminarDatos: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 14, marginBottom: 8 },
- eliminarDatosTexto: { flex: 1, fontSize: 13, color: '#ff6b6b', fontWeight: '600' },
+  terminosTexto: { flex: 1, fontSize: 13 },
+  eliminarDatos: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 14, marginBottom: 8 },
+  eliminarDatosTexto: { flex: 1, fontSize: 13, color: '#ff6b6b', fontWeight: '600' },
+  version: { textAlign: 'center', fontSize: 12, marginBottom: 8 },
 });
