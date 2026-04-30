@@ -324,9 +324,16 @@ export default function Perfil() {
       <Text style={[styles.seccionLabel, { color: colores.textoSecundario }]}>Datos personales</Text>
       <TextInput style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto }]} placeholder="Tu nombre" placeholderTextColor="#555" value={nombre} onChangeText={setNombre} />
       <TextInput style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto }]} placeholder="Tu edad" placeholderTextColor="#555" value={edad} onChangeText={setEdad} keyboardType="numeric" maxLength={3} />
-      <TextInput style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto }]} placeholder="Tu correo" placeholderTextColor="#555" value={correo} onChangeText={setCorreo} keyboardType="email-address" autoCapitalize="none" />
-
-      <Text style={[styles.seccionLabel, { color: colores.textoSecundario }]}>Género</Text>
+      <TextInput style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto }]} placeholder="Fecha de cumpleaños (DD/MM/AAAA)" placeholderTextColor="#555" value={correo} onChangeText={(texto) => {
+        const soloNumeros = texto.replace(/\D/g, '');
+        let formateado = soloNumeros;
+        if (soloNumeros.length >= 3 && soloNumeros.length <= 4) {
+          formateado = soloNumeros.slice(0, 2) + '/' + soloNumeros.slice(2);
+        } else if (soloNumeros.length >= 5) {
+          formateado = soloNumeros.slice(0, 2) + '/' + soloNumeros.slice(2, 4) + '/' + soloNumeros.slice(4, 8);
+        }
+        setCorreo(formateado);
+      }} keyboardType="numeric" maxLength={10} />
       <View style={styles.generoContainer}>
         {generos.map((g) => (
           <TouchableOpacity key={g} style={[styles.generoBadge, { backgroundColor: colores.fondoTarjeta }, genero === g && { borderColor: colores.acento }]} onPress={() => setGenero(g)}>
