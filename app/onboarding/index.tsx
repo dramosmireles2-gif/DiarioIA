@@ -61,13 +61,19 @@ export default function Onboarding() {
 
   const finalizar = async () => {
     if (!validarPaso()) return;
-    await AsyncStorage.setItem('onboarding_completado', 'true');
-    await AsyncStorage.setItem('perfil', JSON.stringify({
-      nombre, edad, cumpleanos, genero,
-      camino: caminoSeleccionado,
-      foto: null,
-    }));
-    router.replace('/(tabs)');
+    try {
+      await AsyncStorage.setItem('onboarding_completado', 'true');
+      await AsyncStorage.setItem('perfil', JSON.stringify({
+        nombre, edad, cumpleanos, genero,
+        camino: caminoSeleccionado,
+        foto: null,
+      }));
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 300);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo guardar tu perfil. Intenta de nuevo.');
+    }
   };
 
   const renderPaso = () => {
