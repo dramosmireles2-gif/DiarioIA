@@ -2,6 +2,7 @@ import { useTema } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+
 import { useState } from 'react';
 import {
   Alert, KeyboardAvoidingView, Platform, ScrollView,
@@ -25,6 +26,7 @@ const slides = [
 
 export default function Onboarding() {
   const { colores } = useTema();
+  const [completado, setCompletado] = useState(false);
   const router = useRouter();
   const [paso, setPaso] = useState(0);
   const [nombre, setNombre] = useState('');
@@ -71,7 +73,10 @@ export default function Onboarding() {
         foto: null,
       }));
       await AsyncStorage.setItem('onboarding_completado', 'true');
-      router.replace('/(tabs)');
+      setCompletado(true);
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 2500);
     } catch (error) {
       Alert.alert('Error', 'No se pudo guardar tu perfil. Intenta de nuevo.');
       setGuardando(false);
@@ -212,7 +217,23 @@ export default function Onboarding() {
     }
   };
 
-  const esUltimoPaso = paso === totalPasos - 1;
+    const esUltimoPaso = paso === totalPasos - 1;
+    if (completado) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#7c6af7', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+        <Text style={{ fontSize: 72 }}>✨</Text>
+        <Text style={{ color: '#fff', fontSize: 26, fontWeight: 'bold', textAlign: 'center' }}>
+          ¡Bienvenido, {nombre}!
+        </Text>
+        <Text style={{ color: '#ffffff99', fontSize: 16, textAlign: 'center', paddingHorizontal: 40 }}>
+          Tu diario está listo. Comencemos este viaje juntos 💜
+        </Text>
+        <View style={{ marginTop: 20, width: 200, height: 4, backgroundColor: '#ffffff30', borderRadius: 2, overflow: 'hidden' }}>
+          <View style={{ width: '100%', height: 4, backgroundColor: '#fff', borderRadius: 2 }} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
