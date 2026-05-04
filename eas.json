@@ -9,10 +9,16 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_ANTHROPIC_API_KEY": "sk-ant-aqui-va-tu-clave"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_ANTHROPIC_API_KEY": "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"
+      }
     }
   },
   "submit": {
