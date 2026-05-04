@@ -32,8 +32,9 @@ export default function Onboarding() {
   const [cumpleanos, setCumpleanos] = useState('');
   const [genero, setGenero] = useState('');
   const [caminoSeleccionado, setCaminoSeleccionado] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
 
-  const totalPasos = slides.length + 3; // slides + datos + genero + camino
+  const totalPasos = slides.length + 3;
 
   const validarPaso = () => {
     if (paso === slides.length) {
@@ -61,23 +62,23 @@ export default function Onboarding() {
 
   const finalizar = async () => {
     if (!validarPaso()) return;
+    if (guardando) return;
+    setGuardando(true);
     try {
-      await AsyncStorage.setItem('onboarding_completado', 'true');
       await AsyncStorage.setItem('perfil', JSON.stringify({
         nombre, edad, cumpleanos, genero,
         camino: caminoSeleccionado,
         foto: null,
       }));
-      setTimeout(() => {
-        router.replace('/(tabs)');
-      }, 300);
+      await AsyncStorage.setItem('onboarding_completado', 'true');
+      router.replace('/(tabs)');
     } catch (error) {
       Alert.alert('Error', 'No se pudo guardar tu perfil. Intenta de nuevo.');
+      setGuardando(false);
     }
   };
 
   const renderPaso = () => {
-    // Slides informativos
     if (paso < slides.length) {
       const slide = slides[paso];
       return (
@@ -91,66 +92,70 @@ export default function Onboarding() {
       );
     }
 
-    // Paso datos básicos
     if (paso === slides.length) {
       return (
-        <View style={styles.slide}>
-          <Text style={styles.slideEmoji}>👋</Text>
-          <Text style={[styles.slideTitulo, { color: colores.texto }]}>Cuéntanos sobre ti</Text>
-          <Text style={[styles.slideDescripcion, { color: colores.textoSecundario }]}>
-            Estos datos son necesarios para personalizar tu experiencia.
-          </Text>
-          <View style={styles.inputsContainer}>
-            <View style={styles.inputWrapper}>
-              <Text style={[styles.inputLabel, { color: colores.textoSecundario }]}>Nombre completo *</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto, borderColor: nombre ? colores.acento : 'transparent' }]}
-                placeholder="Tu nombre"
-                placeholderTextColor={colores.textoSecundario}
-                value={nombre}
-                onChangeText={setNombre}
-                maxLength={50}
-              />
-            </View>
-            <View style={styles.inputWrapper}>
-              <Text style={[styles.inputLabel, { color: colores.textoSecundario }]}>Edad *</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto, borderColor: edad ? colores.acento : 'transparent' }]}
-                placeholder="Tu edad"
-                placeholderTextColor={colores.textoSecundario}
-                value={edad}
-                onChangeText={setEdad}
-                keyboardType="numeric"
-                maxLength={3}
-              />
-            </View>
-            <View style={styles.inputWrapper}>
-              <Text style={[styles.inputLabel, { color: colores.textoSecundario }]}>Fecha de cumpleaños *</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto, borderColor: cumpleanos ? colores.acento : 'transparent' }]}
-                placeholder="DD/MM/AAAA"
-                placeholderTextColor={colores.textoSecundario}
-                value={cumpleanos}
-                onChangeText={(texto) => {
-                  const soloNumeros = texto.replace(/\D/g, '');
-                  let formateado = soloNumeros;
-                  if (soloNumeros.length >= 3 && soloNumeros.length <= 4) {
-                    formateado = soloNumeros.slice(0, 2) + '/' + soloNumeros.slice(2);
-                  } else if (soloNumeros.length >= 5) {
-                    formateado = soloNumeros.slice(0, 2) + '/' + soloNumeros.slice(2, 4) + '/' + soloNumeros.slice(4, 8);
-                  }
-                  setCumpleanos(formateado);
-                }}
-                keyboardType="numeric"
-                maxLength={10}
-              />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.slide}>
+            <Text style={styles.slideEmoji}>👋</Text>
+            <Text style={[styles.slideTitulo, { color: colores.texto }]}>Cuéntanos sobre ti</Text>
+            <Text style={[styles.slideDescripcion, { color: colores.textoSecundario }]}>
+              Estos datos son necesarios para personalizar tu experiencia.
+            </Text>
+            <View style={styles.inputsContainer}>
+              <View style={styles.inputWrapper}>
+                <Text style={[styles.inputLabel, { color: colores.textoSecundario }]}>Nombre completo *</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto, borderColor: nombre ? colores.acento : 'transparent' }]}
+                  placeholder="Tu nombre"
+                  placeholderTextColor={colores.textoSecundario}
+                  value={nombre}
+                  onChangeText={setNombre}
+                  maxLength={50}
+                />
+              </View>
+              <View style={styles.inputWrapper}>
+                <Text style={[styles.inputLabel, { color: colores.textoSecundario }]}>Edad *</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto, borderColor: edad ? colores.acento : 'transparent' }]}
+                  placeholder="Tu edad"
+                  placeholderTextColor={colores.textoSecundario}
+                  value={edad}
+                  onChangeText={setEdad}
+                  keyboardType="numeric"
+                  maxLength={3}
+                />
+              </View>
+              <View style={styles.inputWrapper}>
+                <Text style={[styles.inputLabel, { color: colores.textoSecundario }]}>Fecha de cumpleaños *</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto, borderColor: cumpleanos ? colores.acento : 'transparent' }]}
+                  placeholder="DD/MM/AAAA"
+                  placeholderTextColor={colores.textoSecundario}
+                  value={cumpleanos}
+                  onChangeText={(texto) => {
+                    const soloNumeros = texto.replace(/\D/g, '');
+                    let formateado = soloNumeros;
+                    if (soloNumeros.length >= 3 && soloNumeros.length <= 4) {
+                      formateado = soloNumeros.slice(0, 2) + '/' + soloNumeros.slice(2);
+                    } else if (soloNumeros.length >= 5) {
+                      formateado = soloNumeros.slice(0, 2) + '/' + soloNumeros.slice(2, 4) + '/' + soloNumeros.slice(4, 8);
+                    }
+                    setCumpleanos(formateado);
+                  }}
+                  keyboardType="numeric"
+                  maxLength={10}
+                />
+              </View>
             </View>
           </View>
-        </View>
+        </ScrollView>
       );
     }
 
-    // Paso género
     if (paso === slides.length + 1) {
       return (
         <View style={styles.slide}>
@@ -175,10 +180,9 @@ export default function Onboarding() {
       );
     }
 
-    // Paso camino espiritual
     if (paso === slides.length + 2) {
       return (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={[styles.slideEmoji, { textAlign: 'center' }]}>🌟</Text>
           <Text style={[styles.slideTitulo, { color: colores.texto, textAlign: 'center' }]}>
             ¿Qué reflexiones te gustarían?
@@ -214,8 +218,8 @@ export default function Onboarding() {
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colores.fondo }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={20}
     >
-      {/* Indicadores de progreso */}
       <View style={styles.indicadores}>
         {Array.from({ length: totalPasos }).map((_, i) => (
           <View
@@ -229,12 +233,10 @@ export default function Onboarding() {
         ))}
       </View>
 
-      {/* Contenido */}
       <View style={styles.contenido}>
         {renderPaso()}
       </View>
 
-      {/* Botones */}
       <View style={styles.botones}>
         {paso > 0 && (
           <TouchableOpacity
@@ -245,17 +247,17 @@ export default function Onboarding() {
           </TouchableOpacity>
         )}
         <TouchableOpacity
-          style={[styles.botonPrimario, { backgroundColor: colores.acento }, paso === 0 && { flex: 1 }]}
+          style={[styles.botonPrimario, { backgroundColor: guardando ? colores.fondoTarjeta : colores.acento }, paso === 0 && { flex: 1 }]}
           onPress={esUltimoPaso ? finalizar : siguiente}
+          disabled={guardando}
         >
           <Text style={styles.botonPrimarioTexto}>
-            {esUltimoPaso ? '¡Empezar mi diario! 🚀' : 'Continuar'}
+            {guardando ? 'Guardando...' : esUltimoPaso ? '¡Empezar mi diario! 🚀' : 'Continuar'}
           </Text>
-          {!esUltimoPaso && <Ionicons name="arrow-forward" size={18} color="#fff" />}
+          {!esUltimoPaso && !guardando && <Ionicons name="arrow-forward" size={18} color="#fff" />}
         </TouchableOpacity>
       </View>
 
-      {/* Saltar solo en slides */}
       {paso < slides.length && (
         <TouchableOpacity onPress={() => setPaso(slides.length)} style={styles.saltar}>
           <Text style={[styles.saltarTexto, { color: colores.textoSecundario }]}>Saltar introducción</Text>
