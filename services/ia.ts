@@ -1,4 +1,5 @@
 const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY;
+console.log('API KEY existe:', !!API_KEY);
 const API_URL = 'https://api.anthropic.com/v1/messages';
 
 const llamarClaude = async (prompt: string, sistema: string): Promise<string> => {
