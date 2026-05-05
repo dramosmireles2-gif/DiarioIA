@@ -11,13 +11,13 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_ANTHROPIC_API_KEY": "sk-ant-aqui-va-tu-clave"
+        "EXPO_PUBLIC_ANTHROPIC_API_KEY": "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"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_ANTHROPIC_API_KEY": "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"
+        "EXPO_PUBLIC_ANTHROPIC_API_KEY": "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"
       }
     }
   },
