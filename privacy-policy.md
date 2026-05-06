@@ -18,4 +18,4 @@ Ecos almacena localmente en tu dispositivo:
 Usamos la cámara y galería únicamente para adjuntar fotos a tus entradas de diario.
 
 ## Contacto
-Para dudas sobre privacidad contacta a: tu-email@gmail.com
+Para dudas sobre privacidad contacta a: dramosmireles2@gmail.com
