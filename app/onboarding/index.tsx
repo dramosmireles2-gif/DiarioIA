@@ -1,4 +1,6 @@
+import { useAuth } from '@/contexts/AuthContext';
 import { useTema } from '@/contexts/ThemeContext';
+import { guardarPerfilSupabase } from '@/services/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -26,6 +28,7 @@ const slides = [
 
 export default function Onboarding() {
   const { colores } = useTema();
+  const { user } = useAuth();
   const [completado, setCompletado] = useState(false);
   const router = useRouter();
   const [paso, setPaso] = useState(0);
@@ -67,12 +70,18 @@ export default function Onboarding() {
     if (guardando) return;
     setGuardando(true);
     try {
-      await AsyncStorage.setItem('perfil', JSON.stringify({
+      const perfilData = {
         nombre, edad, cumpleanos, genero,
-        camino: caminoSeleccionado,
+        camino: caminoSeleccionado!,
         foto: null,
-      }));
+      };
+      // Guardar localmente (para modo offline)
+      await AsyncStorage.setItem('perfil', JSON.stringify(perfilData));
       await AsyncStorage.setItem('onboarding_completado', 'true');
+      // Guardar en Supabase si hay sesión activa
+      if (user) {
+        await guardarPerfilSupabase(user.id, perfilData);
+      }
       setCompletado(true);
       setTimeout(() => {
         router.replace('/(tabs)');

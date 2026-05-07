@@ -3,8 +3,10 @@ import Estadisticas from '@/components/Estadisticas';
 import GraficaEmocional from '@/components/GraficaEmocional';
 import Logros from '@/components/Logros';
 import Recordatorio from '@/components/Recordatorio';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTema } from '@/contexts/ThemeContext';
 import { generarInsights } from '@/services/ia';
+import { cerrarSesion } from '@/services/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -30,6 +32,7 @@ export default function Perfil() {
   const [insights, setInsights] = useState<any>(null);
   const [cargandoInsights, setCargandoInsights] = useState(false);
   const { colores, tema, cambiarTema } = useTema();
+  const { user } = useAuth();
   const router = useRouter();
   const [editando, setEditando] = useState(false);
   const [caminoSeleccionado, setCaminoSeleccionado] = useState<Camino | null>(null);
@@ -252,6 +255,42 @@ export default function Perfil() {
             <Ionicons name="pencil" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
+        {/* Información de cuenta */}
+        {user && (
+          <View style={[styles.eliminarDatos, { backgroundColor: colores.fondoTarjeta }]}>
+            <Ionicons name="person-circle-outline" size={16} color={colores.textoSecundario} />
+            <Text style={[styles.eliminarDatosTexto, { color: colores.textoSecundario }]} numberOfLines={1}>
+              {user.email || user.app_metadata?.provider || 'Sesión activa'}
+            </Text>
+          </View>
+        )}
+
+        {/* Cerrar sesión */}
+        <TouchableOpacity
+          style={[styles.eliminarDatos, { backgroundColor: colores.fondoTarjeta }]}
+          onPress={() => {
+            Alert.alert(
+              'Cerrar sesión',
+              '¿Estás seguro de que quieres salir?',
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                  text: 'Cerrar sesión',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await cerrarSesion();
+                    router.replace('/auth/login');
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <Ionicons name="log-out-outline" size={16} color="#ff6b6b" />
+          <Text style={styles.eliminarDatosTexto}>Cerrar sesión</Text>
+          <Ionicons name="chevron-forward" size={14} color="#ff6b6b" />
+        </TouchableOpacity>
+
         {/* Eliminar todos los datos */}
         <TouchableOpacity
           style={[styles.eliminarDatos, { backgroundColor: colores.fondoTarjeta }]}
@@ -266,8 +305,9 @@ export default function Perfil() {
                   style: 'destructive',
                   onPress: async () => {
                     await AsyncStorage.clear();
+                    await cerrarSesion();
                     Alert.alert('✅ Listo', 'Todos tus datos fueron eliminados', [
-                      { text: 'OK', onPress: () => router.replace('/onboarding' as any) }
+                      { text: 'OK', onPress: () => router.replace('/auth/login') }
                     ]);
                   },
                 },
