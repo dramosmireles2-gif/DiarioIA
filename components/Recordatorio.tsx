@@ -5,16 +5,6 @@ import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
-
 const MINUTOS = [0, 15, 30, 45];
 
 export default function Recordatorio() {

@@ -199,7 +199,7 @@ export const resumirTexto = async (texto: string, camino: string = 'todo'): Prom
 
 export const detectarEmocion = async (texto: string): Promise<string> => {
   const sistema = 'Eres un psicólogo experto en emociones. Detecta la emoción principal en textos. Responde SOLO en JSON.';
-  const prompt = `Detecta la emoción principal en este texto: "${texto}"\n\nResponde EXACTAMENTE en este formato JSON:\n{"emocion": "una de estas opciones: Genial, Bien, Neutral, Triste, Enojado, Cansado", "explicacion": "una oración corta"}`;
+  const prompt = `Detecta la emoción principal en este texto: "${texto}"\n\nResponde EXACTAMENTE en este formato JSON:\n{"emocion": "una de estas opciones: Genial, Bien, Neutral, Ansioso, Triste, Enojado, Cansado", "explicacion": "una oración corta"}`;
   const respuesta = await llamarClaude(prompt, sistema);
   try {
     const clean = respuesta.replace(/```json|```/g, '').trim();

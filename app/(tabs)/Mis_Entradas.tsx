@@ -1,14 +1,16 @@
 import { useTema } from '@/contexts/ThemeContext';
 import { generarResumenMensual } from '@/services/ia';
+import { emocionEmoji } from '@/utils/emociones';
 import { calcularRacha } from '@/utils/racha';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-  Modal, ScrollView, SectionList, StyleSheet, Text,
+  Modal, RefreshControl, ScrollView, SectionList, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 
 type Entrada = {
   id: string;
@@ -24,10 +26,6 @@ type Seccion = {
   data: Entrada[];
 };
 
-const emocionEmoji: { [key: string]: string } = {
-  'Genial': '😄', 'Bien': '🙂', 'Neutral': '😐',
-  'Triste': '😢', 'Enojado': '😠', 'Cansado': '😴',
-};
 
 export default function MisEntradas() {
   const { colores } = useTema();
@@ -42,6 +40,7 @@ export default function MisEntradas() {
   const [resumenTexto, setResumenTexto] = useState('');
   const [cargandoResumen, setCargandoResumen] = useState(false);
   const [mesResumen, setMesResumen] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   const cargarEntradas = async () => {
     const datos = await AsyncStorage.getItem('entradas');
@@ -50,11 +49,23 @@ export default function MisEntradas() {
 
   useFocusEffect(useCallback(() => { cargarEntradas(); }, []));
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await cargarEntradas();
+    setRefreshing(false);
+  };
+
   const toggleDestacada = async (id: string) => {
     const nuevas = entradas.map((e) => e.id === id ? { ...e, destacada: !e.destacada } : e);
     const ordenadas = [...nuevas.filter((e) => e.destacada), ...nuevas.filter((e) => !e.destacada)];
     await AsyncStorage.setItem('entradas', JSON.stringify(ordenadas));
     setEntradas(ordenadas);
+  };
+
+  const eliminarEntrada = async (id: string) => {
+    const nuevas = entradas.filter((e) => e.id !== id);
+    await AsyncStorage.setItem('entradas', JSON.stringify(nuevas));
+    setEntradas(nuevas);
   };
 
   const formatearMes = (fechaISO: string) =>
@@ -191,7 +202,7 @@ const verResumenMes = async (seccion: Seccion) => {
         </View>
         <View style={[styles.statDivider, { backgroundColor: colores.fondo }]} />
         <View style={styles.statItem}>
-          <Ionicons name="calendar-outline" size={22} color="#4ecdc4" />
+          <Ionicons name="calendar-outline" size={22} color="#56cba8" />
           <Text style={[styles.statValor, { color: colores.texto }]}>{diasEsteMes}</Text>
           <Text style={[styles.statLabel, { color: colores.textoSecundario }]}>Días este mes</Text>
         </View>
@@ -223,6 +234,14 @@ const verResumenMes = async (seccion: Seccion) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
           stickySectionHeadersEnabled={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colores.acento]}
+              tintColor={colores.acento}
+            />
+          }
           renderSectionHeader={({ section }) => (
             <View style={styles.mesHeader}>
               <Text style={[styles.mesTitulo, { color: colores.acento }]}>
@@ -236,72 +255,99 @@ const verResumenMes = async (seccion: Seccion) => {
             </View>
           )}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.tarjeta, { backgroundColor: colores.fondoTarjeta }, item.destacada && { borderColor: '#f5c518', borderWidth: 1.5 }]}
-              onPress={() => router.push({ pathname: '/(tabs)/entrada-detalle', params: { id: item.id } })}
+            <Swipeable
+              friction={2}
+              overshootLeft={false}
+              overshootRight={false}
+              renderLeftActions={() => (
+                <TouchableOpacity
+                  style={[styles.swipeStar, { backgroundColor: item.destacada ? '#999' : '#f5c518' }]}
+                  onPress={() => toggleDestacada(item.id)}
+                >
+                  <Ionicons name={item.destacada ? 'star-outline' : 'star'} size={22} color="#fff" />
+                  <Text style={styles.swipeTexto}>{item.destacada ? 'Quitar' : 'Destacar'}</Text>
+                </TouchableOpacity>
+              )}
+              renderRightActions={() => (
+                <TouchableOpacity
+                  style={styles.swipeDelete}
+                  onPress={() => eliminarEntrada(item.id)}
+                >
+                  <Ionicons name="trash-outline" size={22} color="#fff" />
+                  <Text style={styles.swipeTexto}>Eliminar</Text>
+                </TouchableOpacity>
+              )}
             >
-              <View style={[styles.tarjetaBarra, { backgroundColor: colores.acento }]} />
-              <View style={styles.tarjetaContenido}>
-                <View style={styles.tarjetaHeader}>
-                  <Text style={[styles.tarjetaFecha, { color: colores.acento }]}>
-                    {formatearFechaCorta(item.fecha)}
-                  </Text>
-                  <View style={styles.tarjetaHeaderRight}>
-                    {item.emocion && (
-                      <View style={[styles.emocionBadge, { backgroundColor: colores.fondo }]}>
-                        <Text style={styles.emocionEmoji}>{emocionEmoji[item.emocion] || '😊'}</Text>
-                        <Text style={[styles.emocionTexto, { color: colores.textoSecundario }]}>{item.emocion}</Text>
-                      </View>
-                    )}
-                    <TouchableOpacity onPress={() => toggleDestacada(item.id)}>
-                      <Ionicons name={item.destacada ? 'star' : 'star-outline'} size={18} color={item.destacada ? '#f5c518' : colores.textoSecundario} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <Text style={[styles.tarjetaTitulo, { color: colores.texto }]} numberOfLines={1}>
-                  {primerLinea(item.texto)}
-                </Text>
-                {resto(item.texto) !== '' && (
-                  <Text style={[styles.tarjetaPreview, { color: colores.textoSecundario }]} numberOfLines={2}>
-                    {resto(item.texto)}
-                  </Text>
-                )}
-                <View style={styles.tarjetaFooter}>
-                  <View style={styles.tarjetaStat}>
-                    <Ionicons name="document-text-outline" size={12} color={colores.textoSecundario} />
-                    <Text style={[styles.tarjetaStatTexto, { color: colores.textoSecundario }]}>
-                      {item.texto.split(' ').filter(Boolean).length} palabras
-                    </Text>
-                  </View>
-                  <View style={styles.tarjetaStat}>
-                    <Ionicons name="time-outline" size={12} color={colores.textoSecundario} />
-                    <Text style={[styles.tarjetaStatTexto, { color: colores.textoSecundario }]}>
-                      {Math.ceil(item.texto.split(' ').filter(Boolean).length / 200) || 1} min lectura
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={colores.textoSecundario} />
-                </View>
-              </View>
-            </TouchableOpacity>
-          )}
-          renderSectionFooter={({ section }) => (
-            <View style={[styles.bannerAsistente, { backgroundColor: colores.acento + '10', borderColor: colores.acento + '20' }]}>
-              <View style={[styles.bannerIcono, { backgroundColor: colores.acento + '20' }]}>
-                <Ionicons name="sparkles" size={20} color={colores.acento} />
-              </View>
-              <View style={styles.bannerTexto}>
-                <Text style={[styles.bannerTitulo, { color: colores.acento }]}>Tu asistente de diario</Text>
-                <Text style={[styles.bannerSub, { color: colores.textoSecundario }]}>¿Quieres ver un resumen de tus emociones este mes?</Text>
-              </View>
               <TouchableOpacity
-                style={[styles.bannerBtn, { backgroundColor: colores.fondoTarjeta }]}
-                onPress={() => verResumenMes(section)}
+                style={[styles.tarjeta, { backgroundColor: colores.fondoTarjeta }, item.destacada && { borderColor: '#f5c518', borderWidth: 1.5 }]}
+                onPress={() => router.push({ pathname: '/(tabs)/entrada-detalle', params: { id: item.id } })}
               >
-                <Text style={[styles.bannerBtnTexto, { color: colores.acento }]}>Ver resumen</Text>
-                <Ionicons name="chevron-forward" size={14} color={colores.acento} />
+                <View style={[styles.tarjetaBarra, { backgroundColor: colores.acento }]} />
+                <View style={styles.tarjetaContenido}>
+                  <View style={styles.tarjetaHeader}>
+                    <Text style={[styles.tarjetaFecha, { color: colores.acento }]}>
+                      {formatearFechaCorta(item.fecha)}
+                    </Text>
+                    <View style={styles.tarjetaHeaderRight}>
+                      {item.emocion && (
+                        <View style={[styles.emocionBadge, { backgroundColor: colores.fondo }]}>
+                          <Text style={styles.emocionEmoji}>{emocionEmoji[item.emocion] || '😊'}</Text>
+                          <Text style={[styles.emocionTexto, { color: colores.textoSecundario }]}>{item.emocion}</Text>
+                        </View>
+                      )}
+                      <TouchableOpacity onPress={() => toggleDestacada(item.id)}>
+                        <Ionicons name={item.destacada ? 'star' : 'star-outline'} size={18} color={item.destacada ? '#f5c518' : colores.textoSecundario} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  <Text style={[styles.tarjetaTitulo, { color: colores.texto }]} numberOfLines={1}>
+                    {primerLinea(item.texto)}
+                  </Text>
+                  {resto(item.texto) !== '' && (
+                    <Text style={[styles.tarjetaPreview, { color: colores.textoSecundario }]} numberOfLines={2}>
+                      {resto(item.texto)}
+                    </Text>
+                  )}
+                  <View style={styles.tarjetaFooter}>
+                    <View style={styles.tarjetaStat}>
+                      <Ionicons name="document-text-outline" size={12} color={colores.textoSecundario} />
+                      <Text style={[styles.tarjetaStatTexto, { color: colores.textoSecundario }]}>
+                        {item.texto.split(' ').filter(Boolean).length} palabras
+                      </Text>
+                    </View>
+                    <View style={styles.tarjetaStat}>
+                      <Ionicons name="time-outline" size={12} color={colores.textoSecundario} />
+                      <Text style={[styles.tarjetaStatTexto, { color: colores.textoSecundario }]}>
+                        {Math.ceil(item.texto.split(' ').filter(Boolean).length / 200) || 1} min lectura
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colores.textoSecundario} />
+                  </View>
+                </View>
               </TouchableOpacity>
-            </View>
+            </Swipeable>
           )}
+          renderSectionFooter={({ section }) => {
+            if (section !== secciones[0]) return null;
+            return (
+              <View style={[styles.bannerAsistente, { backgroundColor: colores.acento + '10', borderColor: colores.acento + '20' }]}>
+                <View style={[styles.bannerIcono, { backgroundColor: colores.acento + '20' }]}>
+                  <Ionicons name="sparkles" size={20} color={colores.acento} />
+                </View>
+                <View style={styles.bannerTexto}>
+                  <Text style={[styles.bannerTitulo, { color: colores.acento }]}>Tu asistente de diario</Text>
+                  <Text style={[styles.bannerSub, { color: colores.textoSecundario }]}>¿Quieres ver un resumen de tus emociones este mes?</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.bannerBtn, { backgroundColor: colores.fondoTarjeta }]}
+                  onPress={() => verResumenMes(section)}
+                >
+                  <Text style={[styles.bannerBtnTexto, { color: colores.acento }]}>Ver resumen</Text>
+                  <Ionicons name="chevron-forward" size={14} color={colores.acento} />
+                </TouchableOpacity>
+              </View>
+            );
+          }}
         />
       )}
 
@@ -318,7 +364,7 @@ const verResumenMes = async (seccion: Seccion) => {
             </View>
             <Text style={[styles.filtroLabel, { color: colores.textoSecundario }]}>Por emoción</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtroRow}>
-              {['Genial', 'Bien', 'Neutral', 'Triste', 'Enojado', 'Cansado'].map((e) => (
+              {['Genial', 'Bien', 'Neutral', 'Ansioso', 'Triste', 'Enojado', 'Cansado'].map((e) => (
                 <TouchableOpacity
                   key={e}
                   style={[styles.filtroBadge, { backgroundColor: filtroEmocion === e ? colores.acento : colores.fondo }]}
@@ -466,4 +512,7 @@ const styles = StyleSheet.create({
   cargandoContainer: { alignItems: 'center', padding: 40 },
   cargandoTexto: { fontSize: 15, textAlign: 'center' },
   resumenTexto: { fontSize: 15, lineHeight: 26 },
+  swipeStar: { justifyContent: 'center', alignItems: 'center', width: 80, borderRadius: 16, marginBottom: 12, gap: 4 },
+  swipeDelete: { justifyContent: 'center', alignItems: 'center', width: 80, backgroundColor: '#ff6b6b', borderRadius: 16, marginBottom: 12, gap: 4 },
+  swipeTexto: { color: '#fff', fontSize: 11, fontWeight: '600' },
 });

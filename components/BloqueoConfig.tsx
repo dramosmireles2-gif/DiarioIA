@@ -75,8 +75,8 @@ export default function BloqueoConfig() {
         </View>
         {activo && (
           <View style={styles.activoRow}>
-            <Ionicons name="shield-checkmark" size={16} color="#4ecdc4" />
-            <Text style={[styles.activoTexto, { color: '#4ecdc4' }]}>Tu diario está protegido</Text>
+            <Ionicons name="shield-checkmark" size={16} color={colores.acento} />
+            <Text style={[styles.activoTexto, { color: colores.acento }]}>Tu diario está protegido</Text>
           </View>
         )}
       </View>

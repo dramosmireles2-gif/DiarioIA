@@ -1,16 +1,15 @@
+import Skeleton from '@/components/Skeleton';
 import { useTema } from '@/contexts/ThemeContext';
 import { analizarEmocion, analizarImagen, detectarEmocion, generarEtiquetas, generarReflexion, mejorarTexto, resumirTexto } from '@/services/ia';
+import { emocionEmoji } from '@/utils/emociones';
 
-const emocionEmoji: { [key: string]: string } = {
-  'Genial': '😄', 'Bien': '🙂', 'Neutral': '😐',
-  'Triste': '😢', 'Enojado': '😠', 'Cansado': '😴',
-};
+const tamanos = [14, 16, 18, 20];
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import TextoIA from '@/components/TextoIA';
-import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Entrada = {
   id: string;
@@ -41,6 +40,8 @@ export default function EntradaDetalle() {
   const [imagenSeleccionada, setImagenSeleccionada] = useState<string | null>(null);
   const [analisisImagen, setAnalisisImagen] = useState<string | null>(null);
   const [cargandoImagen, setCargandoImagen] = useState(false);
+  const [tamanoIndex, setTamanoIndex] = useState(1);
+  const [entradasIds, setEntradasIds] = useState<string[]>([]);
 
   const cargarEntrada = async () => {
     setReflexion(null);
@@ -49,6 +50,7 @@ export default function EntradaDetalle() {
     const datos = await AsyncStorage.getItem('entradas');
     if (datos) {
       const entradas: Entrada[] = JSON.parse(datos);
+      setEntradasIds(entradas.map((e) => e.id));
       const encontrada = entradas.find((e) => e.id === id);
       if (encontrada) {
         setEntrada(encontrada);
@@ -89,6 +91,14 @@ export default function EntradaDetalle() {
         },
       },
     ]);
+  };
+
+  const compartirEntrada = async () => {
+    if (!entrada) return;
+    const fecha = new Date(entrada.fecha).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const emojiEmocion = entrada.emocion ? ` ${emocionEmoji[entrada.emocion] || ''}` : '';
+    const texto = `📔 Mi Diario — ${fecha}${emojiEmocion}\n\n${entrada.texto}`;
+    await Share.share({ message: texto });
   };
 
   const guardarEdicion = async () => {
@@ -215,6 +225,9 @@ export default function EntradaDetalle() {
 
   const fecha = new Date(entrada.fecha);
   const palabras = entrada.texto.split(' ').filter(Boolean).length;
+  const indiceActual = entradasIds.indexOf(id as string);
+  const idMasReciente = indiceActual > 0 ? entradasIds[indiceActual - 1] : null;
+  const idMasAntigua = indiceActual < entradasIds.length - 1 ? entradasIds[indiceActual + 1] : null;
 
   const handleAnalizarImagen = async (imagenUri: string) => {
     setCargandoImagen(true);
@@ -237,8 +250,14 @@ export default function EntradaDetalle() {
           <Ionicons name="arrow-back" size={24} color={colores.texto} />
         </TouchableOpacity>
         <View style={styles.headerBotones}>
+          <TouchableOpacity onPress={() => setTamanoIndex((tamanoIndex + 1) % tamanos.length)} style={styles.headerBtn}>
+            <Text style={[styles.headerAa, { color: colores.textoSecundario }]}>Aa</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={toggleDestacada} style={styles.headerBtn}>
             <Ionicons name={entrada.destacada ? 'star' : 'star-outline'} size={22} color={entrada.destacada ? '#f5c518' : colores.textoSecundario} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={compartirEntrada} style={styles.headerBtn}>
+            <Ionicons name="share-outline" size={22} color={colores.textoSecundario} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { setTextoEditado(entrada.texto); setEditando(true); }} style={styles.headerBtn}>
             <Ionicons name="pencil-outline" size={22} color={colores.acento} />
@@ -298,7 +317,7 @@ export default function EntradaDetalle() {
         </View>
 
         <View style={[styles.textoCard, { backgroundColor: colores.fondoTarjeta }]}>
-          <Text style={[styles.texto, { color: colores.texto }]}>{entrada.texto}</Text>
+          <Text style={[styles.texto, { color: colores.texto, fontSize: tamanos[tamanoIndex], lineHeight: tamanos[tamanoIndex] * 1.75 }]}>{entrada.texto}</Text>
         </View>
 
         <View style={[styles.reflexionCard, { backgroundColor: colores.acento + '15', borderColor: colores.acento + '30' }]}>
@@ -310,7 +329,11 @@ export default function EntradaDetalle() {
           {reflexion ? (
             <TextoIA texto={reflexion}/>
           ) : cargandoIA ? (
-            <Text style={[styles.reflexionSub, { color: colores.textoSecundario }]}>La IA está generando tu reflexión... ✨</Text>
+            <View style={{ gap: 10, marginTop: 4 }}>
+              <Skeleton width="95%" height={13} borderRadius={5} color={colores.textoSecundario + '35'} />
+              <Skeleton width="80%" height={13} borderRadius={5} color={colores.textoSecundario + '30'} />
+              <Skeleton width="60%" height={13} borderRadius={5} color={colores.textoSecundario + '25'} />
+            </View>
           ) : (
             <TouchableOpacity onPress={() => entrada && ejecutarAnalisisIA(entrada)}>
               <Text style={[styles.reflexionSub, { color: colores.acento }]}>Toca para generar reflexión con IA ✨</Text>
@@ -407,14 +430,25 @@ export default function EntradaDetalle() {
             <Text style={[styles.iaTitulo, { color: colores.acento }]}>Análisis de IA</Text>
           </View>
           <View style={styles.iaContenido}>
-            <Text style={[styles.iaTexto, { color: colores.textoSecundario }]}>
-              {analisis ? analisis.resumen : cargandoIA ? 'Analizando tus emociones...' : 'Toca para analizar con IA'}
-            </Text>
+            {cargandoIA ? (
+              <View style={{ flex: 1, gap: 8 }}>
+                <Skeleton width="90%" height={12} borderRadius={5} color={colores.textoSecundario + '35'} />
+                <Skeleton width="70%" height={12} borderRadius={5} color={colores.textoSecundario + '30'} />
+              </View>
+            ) : (
+              <Text style={[styles.iaTexto, { color: colores.textoSecundario }]}>
+                {analisis ? analisis.resumen : 'Toca para analizar con IA'}
+              </Text>
+            )}
             <View style={styles.nivelContainer}>
               <View style={[styles.nivelCirculo, { borderColor: analisis ? '#7c6af7' : colores.acento }]}>
-                <Text style={[styles.nivelNumero, { color: colores.acento }]}>
-                  {analisis ? analisis.nivelEstres : cargandoIA ? '...' : '?'}
-                </Text>
+                {cargandoIA ? (
+                  <Skeleton width={28} height={28} borderRadius={14} color={colores.acento + '40'} />
+                ) : (
+                  <Text style={[styles.nivelNumero, { color: colores.acento }]}>
+                    {analisis ? analisis.nivelEstres : '?'}
+                  </Text>
+                )}
               </View>
               <Text style={[styles.nivelLabel, { color: colores.textoSecundario }]}>Nivel de{'\n'}estrés</Text>
             </View>
@@ -424,6 +458,27 @@ export default function EntradaDetalle() {
         <Text style={[styles.fechaCreacion, { color: colores.textoSecundario }]}>
           Creada el {fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })} a las {fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
         </Text>
+
+        {entradasIds.length > 1 && (
+          <View style={[styles.navegacion, { borderTopColor: colores.fondoTarjeta }]}>
+            <TouchableOpacity
+              style={[styles.navBtn, !idMasReciente && styles.navBtnDesactivado]}
+              onPress={() => idMasReciente && router.replace({ pathname: '/(tabs)/entrada-detalle', params: { id: idMasReciente } } as any)}
+              disabled={!idMasReciente}
+            >
+              <Ionicons name="chevron-back" size={16} color={idMasReciente ? colores.acento : colores.textoSecundario} />
+              <Text style={[styles.navTexto, { color: idMasReciente ? colores.acento : colores.textoSecundario }]}>Más reciente</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.navBtn, !idMasAntigua && styles.navBtnDesactivado]}
+              onPress={() => idMasAntigua && router.replace({ pathname: '/(tabs)/entrada-detalle', params: { id: idMasAntigua } } as any)}
+              disabled={!idMasAntigua}
+            >
+              <Text style={[styles.navTexto, { color: idMasAntigua ? colores.acento : colores.textoSecundario }]}>Más antigua</Text>
+              <Ionicons name="chevron-forward" size={16} color={idMasAntigua ? colores.acento : colores.textoSecundario} />
+            </TouchableOpacity>
+          </View>
+        )}
 
       </ScrollView>
 
@@ -527,12 +582,12 @@ export default function EntradaDetalle() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalAccionBtn, { borderColor: '#4ecdc4', opacity: cargandoModal ? 0.5 : 1 }]}
+                style={[styles.modalAccionBtn, { borderColor: '#56cba8', opacity: cargandoModal ? 0.5 : 1 }]}
                 onPress={handleDetectarEmocion}
                 disabled={cargandoModal}
               >
-                <Ionicons name="happy-outline" size={14} color="#4ecdc4" />
-                <Text style={[styles.modalAccionTexto, { color: '#4ecdc4' }]}>
+                <Ionicons name="happy-outline" size={14} color="#56cba8" />
+                <Text style={[styles.modalAccionTexto, { color: '#56cba8' }]}>
                   {cargandoModal && mensajeModal.includes('emoción') ? 'Analizando...' : 'Analizar emoción'}
                 </Text>
               </TouchableOpacity>
@@ -650,4 +705,9 @@ const styles = StyleSheet.create({
   analisisImagenCard: { borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1 },
   analisisImagenHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   analisisImagenTitulo: { flex: 1, fontSize: 13, fontWeight: 'bold' },
+  headerAa: { fontSize: 14, fontWeight: 'bold' },
+  navegacion: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, paddingTop: 16, marginBottom: 8 },
+  navBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8 },
+  navBtnDesactivado: { opacity: 0.3 },
+  navTexto: { fontSize: 13, fontWeight: '600' },
 });

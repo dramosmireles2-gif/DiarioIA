@@ -1,8 +1,11 @@
+import Skeleton from '@/components/Skeleton';
+import Skeleton from '@/components/Skeleton';
 import TextoIA from '@/components/TextoIA';
 import { useTema } from '@/contexts/ThemeContext';
 import { generarInsights, generarReflexion } from '@/services/ia';
-import { generarSugerencia } from '@/utils/sugerencias';
 import { calcularRacha } from '@/utils/racha';
+import { emociones, emocionEmoji } from '@/utils/emociones';
+import { generarSugerencia } from '@/utils/sugerencias';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -17,20 +20,6 @@ type Entrada = {
   destacada: boolean;
 };
 
-const emociones = [
-  { emoji: '😄', label: 'Genial', color: '#f5c518' },
-  { emoji: '🙂', label: 'Bien', color: '#4ecdc4' },
-  { emoji: '😐', label: 'Neutral', color: '#9b9b9b' },
-  { emoji: '😢', label: 'Triste', color: '#74b9ff' },
-  { emoji: '😠', label: 'Enojado', color: '#ff6b6b' },
-  { emoji: '😴', label: 'Cansado', color: '#a29bfe' },
-];
-
-const emocionEmoji: { [key: string]: string } = {
-  'Genial': '😄', 'Bien': '🙂', 'Neutral': '😐',
-  'Triste': '😢', 'Enojado': '😠', 'Cansado': '😴',
-};
-
 export default function Inicio() {
   const [esCumpleanos, setEsCumpleanos] = useState(false);
   const [sugerencia, setSugerencia] = useState<any>(null);
@@ -43,7 +32,6 @@ export default function Inicio() {
   const [ultimaEntrada, setUltimaEntrada] = useState<Entrada | null>(null);
   const [racha, setRacha] = useState(0);
   const [totalEntradas, setTotalEntradas] = useState(0);
-  const [emocionSeleccionada, setEmocionSeleccionada] = useState<string | null>(null);
   const [estadoSemana, setEstadoSemana] = useState('Sin datos');
   const [reflexionIA, setReflexionIA] = useState<string | null>(null);
   const [cargandoReflexion, setCargandoReflexion] = useState(false);
@@ -189,26 +177,20 @@ export default function Inicio() {
       <View style={[styles.card, { backgroundColor: colores.fondoTarjeta }]}>
         <Text style={[styles.cardTitulo, { color: colores.texto }]}>Elige tu estado de ánimo</Text>
         <View style={styles.emocionesGrid}>
-          {emociones.map((e) => {
-            const seleccionada = emocionSeleccionada === e.label;
-            return (
-              <TouchableOpacity
-                key={e.label}
-                style={styles.emocionItem}
-                onPress={() => {
-                  setEmocionSeleccionada(seleccionada ? null : e.label);
-                  router.push('/(tabs)/nueva_entrada');
-                }}
-              >
-                <View style={[styles.emocionCirculo, { backgroundColor: e.color + '25' }, seleccionada && { borderColor: e.color, borderWidth: 2 }]}>
-                  <Text style={styles.emocionEmoji}>{e.emoji}</Text>
-                </View>
-                <Text style={[styles.emocionLabel, { color: seleccionada ? e.color : colores.textoSecundario }]}>
-                  {e.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {emociones.map((e) => (
+            <TouchableOpacity
+              key={e.label}
+              style={styles.emocionItem}
+              onPress={() => router.push({ pathname: '/(tabs)/nueva_entrada', params: { emocionInicial: e.label } } as any)}
+            >
+              <View style={[styles.emocionCirculo, { backgroundColor: e.color + '25' }]}>
+                <Text style={styles.emocionEmoji}>{e.emoji}</Text>
+              </View>
+              <Text style={[styles.emocionLabel, { color: colores.textoSecundario }]}>
+                {e.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
         <View style={styles.emocionHint}>
           <Ionicons name="sparkles" size={12} color={colores.acento} />
@@ -245,9 +227,9 @@ export default function Inicio() {
           <Text style={[styles.progresoValor, { color: '#ff6b6b' }]}>{racha}</Text>
           <Text style={[styles.progresoLabel, { color: colores.textoSecundario }]}>días{'\n'}Racha actual</Text>
         </View>
-        <View style={[styles.progresoCard, { backgroundColor: '#4ecdc420' }]}>
-          <Ionicons name="book" size={24} color="#4ecdc4" />
-          <Text style={[styles.progresoValor, { color: '#4ecdc4' }]}>{totalEntradas}</Text>
+        <View style={[styles.progresoCard, { backgroundColor: '#56cba820' }]}>
+          <Ionicons name="book" size={24} color="#56cba8" />
+          <Text style={[styles.progresoValor, { color: '#56cba8' }]}>{totalEntradas}</Text>
           <Text style={[styles.progresoLabel, { color: colores.textoSecundario }]}>Entradas{'\n'}escritas</Text>
         </View>
         <View style={[styles.progresoCard, { backgroundColor: '#f5c51820' }]}>
@@ -317,18 +299,25 @@ export default function Inicio() {
               <Ionicons name="sparkles" size={14} color="#ffffff99" />
               <Text style={[styles.reflexionLabel, { color: '#ffffff99' }]}>Reflexión del día</Text>
               {reflexionIA && !cargandoReflexion && (
-                <TouchableOpacity onPress={() => {
-                  setReflexionIA(null);
-                  AsyncStorage.removeItem('reflexion_diaria');
-                  AsyncStorage.removeItem('reflexion_fecha');
-                  if (perfil && ultimaEntrada) generarReflexionDiaria(perfil, [ultimaEntrada]);
-                }}>
-                  <Ionicons name="refresh-outline" size={14} color="#ffffff99" />
+                <TouchableOpacity
+                  style={styles.reflexionRefreshBtn}
+                  onPress={() => {
+                    setReflexionIA(null);
+                    AsyncStorage.removeItem('reflexion_diaria');
+                    AsyncStorage.removeItem('reflexion_fecha');
+                    if (perfil && ultimaEntrada) generarReflexionDiaria(perfil, [ultimaEntrada]);
+                  }}
+                >
+                  <Ionicons name="refresh-outline" size={20} color="#ffffff99" />
                 </TouchableOpacity>
               )}
             </View>
             {cargandoReflexion ? (
-              <Text style={styles.reflexionTexto}>Generando tu reflexión... ✨</Text>
+              <View style={{ gap: 10, marginTop: 4 }}>
+                <Skeleton width="85%" height={18} borderRadius={6} color="#ffffff45" />
+                <Skeleton width="95%" height={13} borderRadius={5} color="#ffffff30" />
+                <Skeleton width="70%" height={13} borderRadius={5} color="#ffffff25" />
+              </View>
             ) : reflexionIA ? (
               <>
                 <Text style={styles.reflexionTitulo}>
@@ -396,16 +385,16 @@ export default function Inicio() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.insightCard, { backgroundColor: '#4ecdc422' }]}
-            onPress={() => setModalInsight({ emoji: '🌙', titulo: 'Momento favorito', valor: insights.momentoFavorito, descripcion: insights.descripcionMomento, color: '#4ecdc4' })}
+            style={[styles.insightCard, { backgroundColor: '#56cba822' }]}
+            onPress={() => setModalInsight({ emoji: '🌙', titulo: 'Momento favorito', valor: insights.momentoFavorito, descripcion: insights.descripcionMomento, color: '#56cba8' })}
           >
             <Text style={styles.insightEmoji}>🌙</Text>
             <Text style={[styles.insightLabel, { color: colores.textoSecundario }]}>Momento favorito</Text>
-            <Text style={[styles.insightValor, { color: '#4ecdc4' }]} numberOfLines={1}>{insights.momentoFavorito}</Text>
+            <Text style={[styles.insightValor, { color: '#56cba8' }]} numberOfLines={1}>{insights.momentoFavorito}</Text>
             <Text style={[styles.insightDesc, { color: colores.textoSecundario }]} numberOfLines={2}>{insights.descripcionMomento}</Text>
-            <View style={[styles.insightVerMas, { backgroundColor: '#4ecdc420' }]}>
-              <Text style={[styles.insightVerMasTexto, { color: '#4ecdc4' }]}>Ver más</Text>
-              <Ionicons name="arrow-forward" size={10} color="#4ecdc4" />
+            <View style={[styles.insightVerMas, { backgroundColor: '#56cba820' }]}>
+              <Text style={[styles.insightVerMasTexto, { color: '#56cba8' }]}>Ver más</Text>
+              <Ionicons name="arrow-forward" size={10} color="#56cba8" />
             </View>
           </TouchableOpacity>
 
@@ -422,6 +411,18 @@ export default function Inicio() {
               <Ionicons name="arrow-forward" size={10} color="#ff6b6b" />
             </View>
           </TouchableOpacity>
+        </View>
+      ) : cargandoInsights ? (
+        <View style={styles.insightsGrid}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={[styles.insightCard, { backgroundColor: colores.fondoTarjeta }]}>
+              <Skeleton width={32} height={32} borderRadius={16} color={colores.textoSecundario + '30'} style={{ marginBottom: 6 }} />
+              <Skeleton width="80%" height={9} borderRadius={4} color={colores.textoSecundario + '25'} />
+              <Skeleton width="65%" height={13} borderRadius={4} color={colores.textoSecundario + '35'} style={{ marginTop: 4 }} />
+              <Skeleton width="100%" height={9} borderRadius={4} color={colores.textoSecundario + '20'} style={{ marginTop: 6 }} />
+              <Skeleton width="85%" height={9} borderRadius={4} color={colores.textoSecundario + '20'} style={{ marginTop: 4 }} />
+            </View>
+          ))}
         </View>
       ) : !cargandoInsights && totalEntradas === 0 ? (
         <View style={[styles.insightVacio, { backgroundColor: colores.fondoTarjeta }]}>
@@ -478,7 +479,6 @@ export default function Inicio() {
         <View style={[styles.paraTiCard, { backgroundColor: colores.fondoTarjeta }]}>
           <View style={styles.paraTiTop}>
             <Text style={[styles.paraTiLabel, { color: colores.textoSecundario }]}>PARA TI HOY</Text>
-            <Ionicons name="ellipsis-horizontal" size={16} color={colores.textoSecundario} />
           </View>
           <View style={styles.paraTiContenido}>
             <View style={[styles.paraTiIcono, { backgroundColor: sugerencia.color + '30' }]}>
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
   cardTitulo: { fontSize: 15, fontWeight: 'bold', marginBottom: 12 },
   verTodos: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   verTodosTexto: { fontSize: 13 },
-  emocionesGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  emocionesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', gap: 8, marginBottom: 12 },
   emocionItem: { alignItems: 'center', gap: 6 },
   emocionCirculo: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   emocionEmoji: { fontSize: 26 },
@@ -595,4 +595,5 @@ const styles = StyleSheet.create({
   cumpleanosTitulo: { color: '#1a1a2e', fontSize: 15, fontWeight: 'bold', marginBottom: 4 },
   cumpleanosDesc: { color: '#1a1a2e99', fontSize: 12 },
   cumpleanosBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  reflexionRefreshBtn: { padding: 8, marginLeft: 4 },
 });
