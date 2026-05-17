@@ -1,5 +1,4 @@
 import Skeleton from '@/components/Skeleton';
-import Skeleton from '@/components/Skeleton';
 import TextoIA from '@/components/TextoIA';
 import { useTema } from '@/contexts/ThemeContext';
 import { generarInsights, generarReflexion } from '@/services/ia';
