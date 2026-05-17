@@ -162,8 +162,9 @@ export default function EntradaDetalle() {
         );
         await AsyncStorage.setItem('entradas', JSON.stringify(nuevas));
       }
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo conectar con la IA. Verifica tu conexión.');
+    } catch (error: any) {
+      console.log('ERROR IA:', error?.message, error);
+      Alert.alert('Error', error?.message || 'No se pudo conectar con la IA. Verifica tu conexión.');
     }
     setCargandoIA(false);
   };
