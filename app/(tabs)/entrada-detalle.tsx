@@ -1,13 +1,9 @@
 import Skeleton from '@/components/Skeleton';
 import { useTema } from '@/contexts/ThemeContext';
 import { analizarEmocion, analizarImagen, detectarEmocion, generarEtiquetas, generarReflexion, mejorarTexto, resumirTexto } from '@/services/ia';
+import { emocionEmoji } from '@/utils/emociones';
 
 const tamanos = [14, 16, 18, 20];
-
-const emocionEmoji: { [key: string]: string } = {
-  'Genial': '😄', 'Bien': '🙂', 'Neutral': '😐',
-  'Triste': '😢', 'Enojado': '😠', 'Cansado': '😴',
-};
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';

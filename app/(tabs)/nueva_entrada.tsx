@@ -1,25 +1,17 @@
 import ModoGuiado from '@/components/ModoGuiado';
 import { useTema } from '@/contexts/ThemeContext';
+import { emociones } from '@/utils/emociones';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
-import { useNavigation, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert, Image, KeyboardAvoidingView, Platform,
   ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
-
-const emociones = [
-  { emoji: '😄', label: 'Genial' },
-  { emoji: '🙂', label: 'Bien' },
-  { emoji: '😐', label: 'Neutral' },
-  { emoji: '😢', label: 'Triste' },
-  { emoji: '😠', label: 'Enojado' },
-  { emoji: '😴', label: 'Cansado' },
-];
 
 export default function NuevaEntrada() {
   const [modalGuiado, setModalGuiado] = useState(false);
@@ -38,8 +30,14 @@ export default function NuevaEntrada() {
   const guardadoRef = useRef(false);
   const [borradorGuardado, setBorradorGuardado] = useState(false);
   const [guardadoExitoso, setGuardadoExitoso] = useState(false);
+  const { emocionInicial } = useLocalSearchParams<{ emocionInicial?: string }>();
 
   const hayContenido = texto.length > 0 || imagenes.length > 0 || !!audioUri;
+
+  // Preseleccionar emoción si viene desde Inicio
+  useEffect(() => {
+    if (emocionInicial) setEmocionSeleccionada(emocionInicial);
+  }, [emocionInicial]);
 
   // Cargar borrador al montar
   useEffect(() => {
@@ -199,10 +197,14 @@ export default function NuevaEntrada() {
                   style={styles.emocionItem}
                   onPress={() => setEmocionSeleccionada(seleccionado ? null : e.label)}
                 >
-                  <View style={[styles.emocionCirculo, seleccionado && { borderColor: colores.acento, borderWidth: 2 }]}>
+                  <View style={[
+                    styles.emocionCirculo,
+                    { backgroundColor: e.color + '25' },
+                    seleccionado && { borderColor: e.color, borderWidth: 2, backgroundColor: e.color + '40' },
+                  ]}>
                     <Text style={styles.emocionEmoji}>{e.emoji}</Text>
                   </View>
-                  <Text style={[styles.emocionLabel, { color: seleccionado ? colores.acento : colores.textoSecundario }]}>
+                  <Text style={[styles.emocionLabel, { color: seleccionado ? e.color : colores.textoSecundario }]}>
                     {e.label}
                   </Text>
                 </TouchableOpacity>
@@ -347,9 +349,9 @@ const styles = StyleSheet.create({
   subtitulo: { fontSize: 14 },
   emocionCard: { borderRadius: 16, padding: 16, marginBottom: 16 },
   emocionTitulo: { fontSize: 14, marginBottom: 12 },
-  emocionesGrid: { flexDirection: 'row', justifyContent: 'space-between' },
+  emocionesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', gap: 10 },
   emocionItem: { alignItems: 'center', gap: 6 },
-  emocionCirculo: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' },
+  emocionCirculo: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   emocionEmoji: { fontSize: 26 },
   emocionLabel: { fontSize: 11 },
   inputCard: { borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1.5, borderColor: 'transparent' },

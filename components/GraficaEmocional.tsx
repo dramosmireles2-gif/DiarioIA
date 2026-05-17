@@ -9,14 +9,16 @@ const EMOCIONES_VALOR: { [key: string]: number } = {
   'Bien': 4,
   'Neutral': 3,
   'Cansado': 2,
+  'Ansioso': 2,
   'Triste': 1,
   'Enojado': 1,
 };
 
 const EMOCIONES_COLOR: { [key: string]: string } = {
   'Genial': '#f5c518',
-  'Bien': '#4ecdc4',
+  'Bien': '#56cba8',
   'Neutral': '#9b9b9b',
+  'Ansioso': '#ff9f43',
   'Cansado': '#a29bfe',
   'Triste': '#74b9ff',
   'Enojado': '#ff6b6b',
@@ -26,6 +28,7 @@ const EMOCIONES_EMOJI: { [key: string]: string } = {
   'Genial': '😄',
   'Bien': '🙂',
   'Neutral': '😐',
+  'Ansioso': '😰',
   'Cansado': '😴',
   'Triste': '😢',
   'Enojado': '😠',

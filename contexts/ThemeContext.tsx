@@ -11,15 +11,15 @@ type ThemeContextType = {
 };
 
 const temaOscuro = {
-  fondo: '#1a1a2e',
-  fondoTarjeta: '#16213e',
+  fondo: '#121212',
+  fondoTarjeta: '#1e1e1e',
   texto: '#e0e0e0',
   textoSecundario: '#9b9b9b',
   acento: '#7c6af7',
 };
 
 const temaClaro = {
-  fondo: '#f5f5f5',
+  fondo: '#f7f7f9',
   fondoTarjeta: '#ffffff',
   texto: '#1a1a2e',
   textoSecundario: '#666666',

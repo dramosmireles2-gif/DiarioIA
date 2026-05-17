@@ -59,7 +59,7 @@ export default function Estadisticas() {
   const stats = [
     { icono: 'book-outline', valor: totalEntradas, label: 'Entradas escritas', color: '#7c6af7' },
     { icono: 'flame-outline', valor: racha, label: 'Días seguidos', color: '#ff6b6b' },
-    { icono: 'calendar-outline', valor: diasDesde, label: 'Días usando la app', color: '#4ecdc4' },
+    { icono: 'calendar-outline', valor: diasDesde, label: 'Días usando la app', color: '#56cba8' },
     { icono: 'create-outline', valor: entradaMasLarga, label: 'Caracteres en tu entrada más larga', color: '#f5c518' },
   ];
 

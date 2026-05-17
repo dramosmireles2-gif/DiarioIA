@@ -1,5 +1,6 @@
 import { useTema } from '@/contexts/ThemeContext';
 import { generarResumenMensual } from '@/services/ia';
+import { emocionEmoji } from '@/utils/emociones';
 import { calcularRacha } from '@/utils/racha';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,10 +25,6 @@ type Seccion = {
   data: Entrada[];
 };
 
-const emocionEmoji: { [key: string]: string } = {
-  'Genial': '😄', 'Bien': '🙂', 'Neutral': '😐',
-  'Triste': '😢', 'Enojado': '😠', 'Cansado': '😴',
-};
 
 export default function MisEntradas() {
   const { colores } = useTema();
