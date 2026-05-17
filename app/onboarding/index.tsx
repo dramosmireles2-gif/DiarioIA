@@ -78,9 +78,9 @@ export default function Onboarding() {
   const [guardando, setGuardando] = useState(false);
   const [completado, setCompletado] = useState(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   const completadoScale = useRef(new Animated.Value(0)).current;
   const completadoOpacity = useRef(new Animated.Value(0)).current;
 
@@ -89,6 +89,7 @@ export default function Onboarding() {
   const esUltimoPaso = paso === totalPasos - 1;
 
   useEffect(() => {
+    if (!esSlideIntro) return;
     fadeAnim.setValue(0);
     slideAnim.setValue(30);
     scaleAnim.setValue(0.85);
@@ -188,7 +189,6 @@ export default function Onboarding() {
                   value={nombre}
                   onChangeText={setNombre}
                   maxLength={50}
-                  autoFocus
                 />
               </View>
               <View style={styles.inputWrapper}>
