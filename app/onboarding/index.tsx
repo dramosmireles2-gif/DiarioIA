@@ -42,7 +42,6 @@ export default function Onboarding() {
     if (paso === slides.length) {
       if (!nombre.trim()) { Alert.alert('Campo requerido', 'Por favor escribe tu nombre'); return false; }
       if (!edad.trim()) { Alert.alert('Campo requerido', 'Por favor escribe tu edad'); return false; }
-      if (!cumpleanos.trim()) { Alert.alert('Campo requerido', 'Por favor escribe tu fecha de cumpleaños'); return false; }
     }
     if (paso === slides.length + 1) {
       if (!genero) { Alert.alert('Campo requerido', 'Por favor selecciona tu género'); return false; }
@@ -135,7 +134,7 @@ export default function Onboarding() {
                 />
               </View>
               <View style={styles.inputWrapper}>
-                <Text style={[styles.inputLabel, { color: colores.textoSecundario }]}>Fecha de cumpleaños *</Text>
+                <Text style={[styles.inputLabel, { color: colores.textoSecundario }]}>Fecha de cumpleaños (opcional)</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: colores.fondoTarjeta, color: colores.texto, borderColor: cumpleanos ? colores.acento : 'transparent' }]}
                   placeholder="DD/MM/AAAA"

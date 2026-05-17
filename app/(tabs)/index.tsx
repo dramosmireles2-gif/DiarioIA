@@ -1,3 +1,4 @@
+import Skeleton from '@/components/Skeleton';
 import TextoIA from '@/components/TextoIA';
 import { useTema } from '@/contexts/ThemeContext';
 import { generarInsights, generarReflexion } from '@/services/ia';
@@ -328,7 +329,11 @@ export default function Inicio() {
               )}
             </View>
             {cargandoReflexion ? (
-              <Text style={styles.reflexionTexto}>Generando tu reflexión... ✨</Text>
+              <View style={{ gap: 10, marginTop: 4 }}>
+                <Skeleton width="85%" height={18} borderRadius={6} color="#ffffff45" />
+                <Skeleton width="95%" height={13} borderRadius={5} color="#ffffff30" />
+                <Skeleton width="70%" height={13} borderRadius={5} color="#ffffff25" />
+              </View>
             ) : reflexionIA ? (
               <>
                 <Text style={styles.reflexionTitulo}>
@@ -423,6 +428,18 @@ export default function Inicio() {
             </View>
           </TouchableOpacity>
         </View>
+      ) : cargandoInsights ? (
+        <View style={styles.insightsGrid}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={[styles.insightCard, { backgroundColor: colores.fondoTarjeta }]}>
+              <Skeleton width={32} height={32} borderRadius={16} color={colores.textoSecundario + '30'} style={{ marginBottom: 6 }} />
+              <Skeleton width="80%" height={9} borderRadius={4} color={colores.textoSecundario + '25'} />
+              <Skeleton width="65%" height={13} borderRadius={4} color={colores.textoSecundario + '35'} style={{ marginTop: 4 }} />
+              <Skeleton width="100%" height={9} borderRadius={4} color={colores.textoSecundario + '20'} style={{ marginTop: 6 }} />
+              <Skeleton width="85%" height={9} borderRadius={4} color={colores.textoSecundario + '20'} style={{ marginTop: 4 }} />
+            </View>
+          ))}
+        </View>
       ) : !cargandoInsights && totalEntradas === 0 ? (
         <View style={[styles.insightVacio, { backgroundColor: colores.fondoTarjeta }]}>
           <Text style={styles.insightVacioEmoji}>🧠</Text>
@@ -478,7 +495,6 @@ export default function Inicio() {
         <View style={[styles.paraTiCard, { backgroundColor: colores.fondoTarjeta }]}>
           <View style={styles.paraTiTop}>
             <Text style={[styles.paraTiLabel, { color: colores.textoSecundario }]}>PARA TI HOY</Text>
-            <Ionicons name="ellipsis-horizontal" size={16} color={colores.textoSecundario} />
           </View>
           <View style={styles.paraTiContenido}>
             <View style={[styles.paraTiIcono, { backgroundColor: sugerencia.color + '30' }]}>
