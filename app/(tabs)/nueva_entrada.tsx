@@ -1,14 +1,13 @@
 import ModoGuiado from '@/components/ModoGuiado';
 import { useTema } from '@/contexts/ThemeContext';
-import { generarReflexion } from '@/services/ia';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useNavigation, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Image, KeyboardAvoidingView, Modal, Platform,
+  Alert, Image, KeyboardAvoidingView, Platform,
   ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
@@ -26,6 +25,7 @@ export default function NuevaEntrada() {
   const [modalGuiado, setModalGuiado] = useState(false);
   const { colores } = useTema();
   const router = useRouter();
+  const navigation = useNavigation();
   const [texto, setTexto] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [imagenes, setImagenes] = useState<string[]>([]);
@@ -35,10 +35,54 @@ export default function NuevaEntrada() {
   const [reproduciendo, setReproduciendo] = useState(false);
   const [sonido, setSonido] = useState<Audio.Sound | null>(null);
   const [emocionSeleccionada, setEmocionSeleccionada] = useState<string | null>(null);
-  const [modalIA, setModalIA] = useState(false);
-  const [chatIA, setChatIA] = useState('');
-  const [respuestaIA, setRespuestaIA] = useState('');
-  const [cargandoChatIA, setCargandoChatIA] = useState(false);
+  const guardadoRef = useRef(false);
+
+  const hayContenido = texto.length > 0 || imagenes.length > 0 || !!audioUri;
+
+  // Cargar borrador al montar
+  useEffect(() => {
+    const cargarBorrador = async () => {
+      const borrador = await AsyncStorage.getItem('borrador');
+      if (!borrador) return;
+      const { texto: textoBorrador, emocion: emocionBorrador } = JSON.parse(borrador);
+      if (!textoBorrador && !emocionBorrador) return;
+      Alert.alert(
+        'Borrador guardado',
+        '¿Continuar con tu entrada anterior?',
+        [
+          { text: 'Descartar', style: 'destructive', onPress: () => AsyncStorage.removeItem('borrador') },
+          { text: 'Continuar', onPress: () => { setTexto(textoBorrador || ''); setEmocionSeleccionada(emocionBorrador || null); } },
+        ]
+      );
+    };
+    cargarBorrador();
+  }, []);
+
+  // Autoguardar borrador mientras se escribe
+  useEffect(() => {
+    if (!hayContenido) return;
+    const timer = setTimeout(async () => {
+      await AsyncStorage.setItem('borrador', JSON.stringify({ texto, emocion: emocionSeleccionada }));
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [texto, emocionSeleccionada]);
+
+  // Confirmar salida si hay contenido sin guardar
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove' as any, (e: any) => {
+      if (!hayContenido || guardadoRef.current) return;
+      e.preventDefault();
+      Alert.alert(
+        'Salir sin guardar',
+        '¿Quieres descartar lo que escribiste?',
+        [
+          { text: 'Quedarme', style: 'cancel' },
+          { text: 'Descartar', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+        ]
+      );
+    });
+    return unsubscribe;
+  }, [navigation, hayContenido]);
 
   const agregarImagen = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -107,30 +151,16 @@ export default function NuevaEntrada() {
       await AsyncStorage.setItem('entradas', JSON.stringify(entradas));
       const fechaInicio = await AsyncStorage.getItem('fechaInicio');
       if (!fechaInicio) await AsyncStorage.setItem('fechaInicio', new Date().toISOString());
+      await AsyncStorage.removeItem('borrador');
+      guardadoRef.current = true;
       setTexto('');
       setImagenes([]);
       setAudioUri(null);
       setEmocionSeleccionada(null);
       router.push({ pathname: '/(tabs)/entrada-detalle', params: { id: nuevaEntrada.id, analizar: 'true' } } as any);
-          } catch { Alert.alert('Error', 'No se pudo guardar la entrada'); }
-          setGuardando(false);
-        };
-
-  const preguntarIA = async () => {
-    if (!chatIA.trim()) return;
-    setCargandoChatIA(true);
-    try {
-      const perfilDatos = await AsyncStorage.getItem('perfil');
-      const perfil = perfilDatos ? JSON.parse(perfilDatos) : { camino: 'todo' };
-      const respuesta = await generarReflexion(chatIA, perfil.camino, null);
-      setRespuestaIA(respuesta);
-    } catch {
-      setRespuestaIA('No se pudo conectar con la IA. Verifica tu conexión.');
-    }
-    setCargandoChatIA(false);
+    } catch { Alert.alert('Error', 'No se pudo guardar la entrada'); }
+    setGuardando(false);
   };
-
-  const hayContenido = texto.length > 0 || imagenes.length > 0 || !!audioUri;
 
   return (
     <KeyboardAvoidingView
@@ -188,9 +218,11 @@ export default function NuevaEntrada() {
             multiline
             value={texto}
             onChangeText={setTexto}
-            maxLength={1000}
+            maxLength={5000}
           />
-          <Text style={[styles.contador, { color: colores.textoSecundario }]}>{texto.length}/1000</Text>
+          <Text style={[styles.contador, { color: texto.length > 4500 ? '#ff6b6b' : colores.textoSecundario }]}>
+            {texto.length}/5000
+          </Text>
         </View>
 
         {/* Imágenes adjuntas */}
@@ -232,6 +264,7 @@ export default function NuevaEntrada() {
           </View>
           <Ionicons name="chevron-forward" size={18} color={colores.acento} />
         </TouchableOpacity>
+
         {/* Botones multimedia */}
         <View style={styles.botonesMultimedia}>
           <TouchableOpacity style={[styles.btnMedia, { backgroundColor: colores.fondoTarjeta }]} onPress={agregarImagen}>
@@ -282,71 +315,11 @@ export default function NuevaEntrada() {
 
       </ScrollView>
 
-      {/* Modal chat IA */}
-      // Modal chat IA
-      <Modal visible={modalIA} animationType="slide" transparent onRequestClose={() => { setModalIA(false); setRespuestaIA(''); setChatIA(''); }}>
-        <View style={styles.modalFondo}>
-          <View style={[styles.modalIA, { backgroundColor: colores.fondoTarjeta }]}>
-            <View style={[styles.modalHandle, { backgroundColor: colores.textoSecundario }]} />
-            <View style={styles.modalIAHeader}>
-              <Ionicons name="sparkles" size={20} color={colores.acento} />
-              <Text style={[styles.modalIATitulo, { color: colores.texto }]}>Asistente de IA</Text>
-              <TouchableOpacity onPress={() => { setModalIA(false); setRespuestaIA(''); setChatIA(''); }}>
-                <Ionicons name="close" size={24} color={colores.textoSecundario} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[styles.modalIASub, { color: colores.textoSecundario }]}>
-              Cuéntame cómo te sientes y te ayudo a reflexionar ✨
-            </Text>
-
-            {respuestaIA !== '' && (
-              <ScrollView style={[styles.respuestaIA, { backgroundColor: colores.fondo }]}>
-                <Text style={[styles.respuestaIATexto, { color: colores.texto }]}>{respuestaIA}</Text>
-                <TouchableOpacity
-                  style={[styles.usarRespuesta, { backgroundColor: colores.acento }]}
-                  onPress={() => {
-                    setTexto(respuestaIA);
-                    setModalIA(false);
-                    setRespuestaIA('');
-                    setChatIA('');
-                  }}
-                >
-                  <Text style={styles.usarRespuestaTexto}>Usar como entrada</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            )}
-
-            <View style={[styles.chatInput, { backgroundColor: colores.fondo }]}>
-              <TextInput
-                style={[styles.chatTextInput, { color: colores.texto }]}
-                placeholder="¿Cómo te sientes hoy?"
-                placeholderTextColor={colores.textoSecundario}
-                value={chatIA}
-                onChangeText={setChatIA}
-                multiline
-                maxLength={500}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.chatBoton, { backgroundColor: cargandoChatIA || !chatIA.trim() ? colores.fondoTarjeta : colores.acento }]}
-              onPress={preguntarIA}
-              disabled={cargandoChatIA || !chatIA.trim()}
-            >
-              <Ionicons name="sparkles" size={18} color="#fff" />
-              <Text style={styles.chatBotonTexto}>
-                {cargandoChatIA ? 'Reflexionando...' : 'Pedir reflexión'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
       <ModoGuiado
         visible={modalGuiado}
         emocion={emocionSeleccionada}
         onCerrar={() => setModalGuiado(false)}
-        onEntradaGenerada={(texto) => setTexto(texto)}
+        onEntradaGenerada={(textoGenerado) => setTexto(textoGenerado)}
       />
     </KeyboardAvoidingView>
   );
@@ -355,7 +328,6 @@ export default function NuevaEntrada() {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 60 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-  headerBtn: { padding: 10, borderRadius: 12 },
   titulo: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
   subtitulo: { fontSize: 14 },
   emocionCard: { borderRadius: 16, padding: 16, marginBottom: 16 },
@@ -368,7 +340,7 @@ const styles = StyleSheet.create({
   inputCard: { borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1.5, borderColor: 'transparent' },
   inputHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   inputPlaceholderTitle: { fontSize: 14, fontWeight: '600' },
-  input: { fontSize: 15, lineHeight: 22, minHeight: 80, textAlignVertical: 'top' },
+  input: { fontSize: 15, lineHeight: 22, minHeight: 120, textAlignVertical: 'top' },
   contador: { fontSize: 11, textAlign: 'right', marginTop: 8 },
   imagenesContainer: { marginBottom: 16 },
   imagenWrapper: { position: 'relative', marginRight: 8 },
@@ -386,20 +358,6 @@ const styles = StyleSheet.create({
   botonTexto: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   privacidad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 8 },
   privacidadTexto: { fontSize: 12 },
-  modalFondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalIA: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '85%' },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  modalIAHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  modalIATitulo: { flex: 1, fontSize: 18, fontWeight: 'bold' },
-  modalIASub: { fontSize: 14, marginBottom: 16, lineHeight: 20 },
-  respuestaIA: { borderRadius: 16, padding: 16, marginBottom: 16, maxHeight: 200 },
-  respuestaIATexto: { fontSize: 14, lineHeight: 22, marginBottom: 12 },
-  usarRespuesta: { borderRadius: 12, padding: 10, alignItems: 'center' },
-  usarRespuestaTexto: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  chatInput: { borderRadius: 16, padding: 14, marginBottom: 12, minHeight: 80 },
-  chatTextInput: { fontSize: 15, textAlignVertical: 'top', minHeight: 60 },
-  chatBoton: { borderRadius: 14, padding: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
-  chatBotonTexto: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
   botonGuiado: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 14, marginBottom: 16, borderWidth: 1.5 },
   botonGuiadoTitulo: { fontSize: 14, fontWeight: 'bold' },
   botonGuiadoSub: { fontSize: 12, marginTop: 2 },

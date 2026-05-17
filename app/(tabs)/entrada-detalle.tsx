@@ -1,5 +1,10 @@
 import { useTema } from '@/contexts/ThemeContext';
 import { analizarEmocion, analizarImagen, detectarEmocion, generarEtiquetas, generarReflexion, mejorarTexto, resumirTexto } from '@/services/ia';
+
+const emocionEmoji: { [key: string]: string } = {
+  'Genial': '😄', 'Bien': '🙂', 'Neutral': '😐',
+  'Triste': '😢', 'Enojado': '😠', 'Cansado': '😴',
+};
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -91,9 +96,14 @@ export default function EntradaDetalle() {
     const datos = await AsyncStorage.getItem('entradas');
     if (!datos) return;
     const entradas: Entrada[] = JSON.parse(datos);
-    const nuevas = entradas.map((e) => e.id === entrada.id ? { ...e, texto: textoEditado } : e);
+    const nuevas = entradas.map((e) =>
+      e.id === entrada.id ? { ...e, texto: textoEditado, reflexion: undefined, analisis: undefined, etiquetas: undefined } : e
+    );
     await AsyncStorage.setItem('entradas', JSON.stringify(nuevas));
     setEntrada({ ...entrada, texto: textoEditado });
+    setReflexion(null);
+    setAnalisis(null);
+    setEtiquetas([]);
     setEditando(false);
   };
 
@@ -256,7 +266,7 @@ export default function EntradaDetalle() {
           {entrada.emocion && (
             <View style={[styles.emocionBadge, { backgroundColor: colores.fondoTarjeta }]}>
               <Text style={styles.emocionEmoji}>
-                {entrada.emocion === 'Genial' ? '😄' : entrada.emocion === 'Bien' ? '🙂' : entrada.emocion === 'Neutral' ? '😐' : entrada.emocion === 'Triste' ? '😢' : entrada.emocion === 'Enojado' ? '😠' : '😴'}
+                {emocionEmoji[entrada.emocion || ''] || '😊'}
               </Text>
               <Text style={[styles.emocionTexto, { color: colores.textoSecundario }]}>{entrada.emocion}</Text>
             </View>
@@ -451,7 +461,7 @@ export default function EntradaDetalle() {
               </View>
               {entrada.emocion && (
                 <View style={[styles.modalEmocionBadge, { backgroundColor: colores.fondo }]}>
-                  <Text>{entrada.emocion === 'Genial' ? '😄' : entrada.emocion === 'Bien' ? '🙂' : entrada.emocion === 'Neutral' ? '😐' : entrada.emocion === 'Triste' ? '😢' : entrada.emocion === 'Enojado' ? '😠' : '😴'}</Text>
+                  <Text>{emocionEmoji[entrada.emocion || ''] || '😊'}</Text>
                   <Text style={[styles.modalFechaTexto, { color: colores.textoSecundario }]}>{entrada.emocion}</Text>
                   <Ionicons name="chevron-down" size={12} color={colores.textoSecundario} />
                 </View>
