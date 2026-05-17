@@ -2,6 +2,7 @@ import TextoIA from '@/components/TextoIA';
 import { useTema } from '@/contexts/ThemeContext';
 import { generarInsights, generarReflexion } from '@/services/ia';
 import { generarSugerencia } from '@/utils/sugerencias';
+import { calcularRacha } from '@/utils/racha';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -80,7 +81,7 @@ export default function Inicio() {
       setTotalEntradas(entradasData.length);
       const ordenadas = [...entradasData].sort((a: Entrada, b: Entrada) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
       setUltimaEntrada(ordenadas[0]);
-      calcularRacha(ordenadas);
+      actualizarRacha(ordenadas);
       calcularEstadoSemana(entradasData);
     }
 
@@ -134,22 +135,8 @@ export default function Inicio() {
     setCargandoReflexion(false);
   };
 
-  const calcularRacha = (entradas: Entrada[]) => {
-    const fechas = entradas
-      .map((e) => new Date(e.fecha).toDateString())
-      .filter((v, i, a) => a.indexOf(v) === i)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    let rachaTemp = 0;
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    for (let i = 0; i < fechas.length; i++) {
-      const fecha = new Date(fechas[i]);
-      fecha.setHours(0, 0, 0, 0);
-      const diffDias = Math.floor((hoy.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDias === i) rachaTemp++;
-      else break;
-    }
-    setRacha(rachaTemp);
+  const actualizarRacha = (entradas: Entrada[]) => {
+    setRacha(calcularRacha(entradas));
   };
 
   const calcularEstadoSemana = (entradas: Entrada[]) => {

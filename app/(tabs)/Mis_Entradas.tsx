@@ -1,5 +1,6 @@
 import { useTema } from '@/contexts/ThemeContext';
 import { generarResumenMensual } from '@/services/ia';
+import { calcularRacha } from '@/utils/racha';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -121,24 +122,7 @@ const verResumenMes = async (seccion: Seccion) => {
 
   const secciones = agruparPorMes(entradasFiltradas);
   const totalEntradas = entradas.length;
-  const racha = (() => {
-    if (entradas.length === 0) return 0;
-    const fechas = entradas
-      .map((e) => new Date(e.fecha).toDateString())
-      .filter((v, i, a) => a.indexOf(v) === i)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    let r = 0;
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    for (let i = 0; i < fechas.length; i++) {
-      const fecha = new Date(fechas[i]);
-      fecha.setHours(0, 0, 0, 0);
-      const diff = Math.floor((hoy.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24));
-      if (diff === i) r++;
-      else break;
-    }
-    return r;
-  })();
+  const racha = calcularRacha(entradas);
   const diasEsteMes = entradas.filter((e) => new Date(e.fecha).getMonth() === new Date().getMonth()).length;
   const emocionMasFrecuente = entradas.length > 0
     ? entradas.reduce((acc: { [key: string]: number }, e) => {
