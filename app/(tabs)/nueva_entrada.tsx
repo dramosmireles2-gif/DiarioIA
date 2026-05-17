@@ -36,6 +36,8 @@ export default function NuevaEntrada() {
   const [sonido, setSonido] = useState<Audio.Sound | null>(null);
   const [emocionSeleccionada, setEmocionSeleccionada] = useState<string | null>(null);
   const guardadoRef = useRef(false);
+  const [borradorGuardado, setBorradorGuardado] = useState(false);
+  const [guardadoExitoso, setGuardadoExitoso] = useState(false);
 
   const hayContenido = texto.length > 0 || imagenes.length > 0 || !!audioUri;
 
@@ -63,6 +65,8 @@ export default function NuevaEntrada() {
     if (!hayContenido) return;
     const timer = setTimeout(async () => {
       await AsyncStorage.setItem('borrador', JSON.stringify({ texto, emocion: emocionSeleccionada }));
+      setBorradorGuardado(true);
+      setTimeout(() => setBorradorGuardado(false), 2000);
     }, 1500);
     return () => clearTimeout(timer);
   }, [texto, emocionSeleccionada]);
@@ -153,10 +157,14 @@ export default function NuevaEntrada() {
       if (!fechaInicio) await AsyncStorage.setItem('fechaInicio', new Date().toISOString());
       await AsyncStorage.removeItem('borrador');
       guardadoRef.current = true;
+      setGuardadoExitoso(true);
+      setGuardando(false);
+      await new Promise(r => setTimeout(r, 700));
       setTexto('');
       setImagenes([]);
       setAudioUri(null);
       setEmocionSeleccionada(null);
+      setGuardadoExitoso(false);
       router.push({ pathname: '/(tabs)/entrada-detalle', params: { id: nuevaEntrada.id, analizar: 'true' } } as any);
     } catch { Alert.alert('Error', 'No se pudo guardar la entrada'); }
     setGuardando(false);
@@ -220,9 +228,14 @@ export default function NuevaEntrada() {
             onChangeText={setTexto}
             maxLength={5000}
           />
-          <Text style={[styles.contador, { color: texto.length > 4500 ? '#ff6b6b' : colores.textoSecundario }]}>
-            {texto.length}/5000
-          </Text>
+          <View style={styles.inputFooter}>
+            <Text style={[styles.borradorIndicador, { color: '#4ecdc4', opacity: borradorGuardado ? 1 : 0 }]}>
+              ✓ Borrador guardado
+            </Text>
+            <Text style={[styles.contador, { color: texto.length > 4500 ? '#ff6b6b' : colores.textoSecundario }]}>
+              {texto.length}/5000
+            </Text>
+          </View>
         </View>
 
         {/* Imágenes adjuntas */}
@@ -299,12 +312,14 @@ export default function NuevaEntrada() {
 
         {/* Botón guardar */}
         <TouchableOpacity
-          style={[styles.boton, !hayContenido && styles.botonDesactivado]}
+          style={[styles.boton, guardadoExitoso && { backgroundColor: '#4ecdc4' }, !hayContenido && styles.botonDesactivado]}
           disabled={!hayContenido || guardando}
           onPress={guardarEntrada}
         >
-          <Ionicons name="save-outline" size={20} color="#fff" />
-          <Text style={styles.botonTexto}>{guardando ? 'Guardando...' : 'Guardar entrada'}</Text>
+          <Ionicons name={guardadoExitoso ? 'checkmark-circle-outline' : 'save-outline'} size={20} color="#fff" />
+          <Text style={styles.botonTexto}>
+            {guardadoExitoso ? '¡Entrada guardada!' : guardando ? 'Guardando...' : 'Guardar entrada'}
+          </Text>
         </TouchableOpacity>
 
         {/* Nota privacidad */}
@@ -361,4 +376,6 @@ const styles = StyleSheet.create({
   botonGuiado: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 14, marginBottom: 16, borderWidth: 1.5 },
   botonGuiadoTitulo: { fontSize: 14, fontWeight: 'bold' },
   botonGuiadoSub: { fontSize: 12, marginTop: 2 },
+  inputFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  borradorIndicador: { fontSize: 11, fontWeight: '600' },
 });

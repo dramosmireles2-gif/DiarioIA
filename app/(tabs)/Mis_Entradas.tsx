@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-  Modal, ScrollView, SectionList, StyleSheet, Text,
+  Modal, RefreshControl, ScrollView, SectionList, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 
@@ -42,6 +42,7 @@ export default function MisEntradas() {
   const [resumenTexto, setResumenTexto] = useState('');
   const [cargandoResumen, setCargandoResumen] = useState(false);
   const [mesResumen, setMesResumen] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   const cargarEntradas = async () => {
     const datos = await AsyncStorage.getItem('entradas');
@@ -49,6 +50,12 @@ export default function MisEntradas() {
   };
 
   useFocusEffect(useCallback(() => { cargarEntradas(); }, []));
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await cargarEntradas();
+    setRefreshing(false);
+  };
 
   const toggleDestacada = async (id: string) => {
     const nuevas = entradas.map((e) => e.id === id ? { ...e, destacada: !e.destacada } : e);
@@ -223,6 +230,14 @@ const verResumenMes = async (seccion: Seccion) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
           stickySectionHeadersEnabled={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colores.acento]}
+              tintColor={colores.acento}
+            />
+          }
           renderSectionHeader={({ section }) => (
             <View style={styles.mesHeader}>
               <Text style={[styles.mesTitulo, { color: colores.acento }]}>
@@ -284,24 +299,27 @@ const verResumenMes = async (seccion: Seccion) => {
               </View>
             </TouchableOpacity>
           )}
-          renderSectionFooter={({ section }) => (
-            <View style={[styles.bannerAsistente, { backgroundColor: colores.acento + '10', borderColor: colores.acento + '20' }]}>
-              <View style={[styles.bannerIcono, { backgroundColor: colores.acento + '20' }]}>
-                <Ionicons name="sparkles" size={20} color={colores.acento} />
+          renderSectionFooter={({ section }) => {
+            if (section !== secciones[0]) return null;
+            return (
+              <View style={[styles.bannerAsistente, { backgroundColor: colores.acento + '10', borderColor: colores.acento + '20' }]}>
+                <View style={[styles.bannerIcono, { backgroundColor: colores.acento + '20' }]}>
+                  <Ionicons name="sparkles" size={20} color={colores.acento} />
+                </View>
+                <View style={styles.bannerTexto}>
+                  <Text style={[styles.bannerTitulo, { color: colores.acento }]}>Tu asistente de diario</Text>
+                  <Text style={[styles.bannerSub, { color: colores.textoSecundario }]}>¿Quieres ver un resumen de tus emociones este mes?</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.bannerBtn, { backgroundColor: colores.fondoTarjeta }]}
+                  onPress={() => verResumenMes(section)}
+                >
+                  <Text style={[styles.bannerBtnTexto, { color: colores.acento }]}>Ver resumen</Text>
+                  <Ionicons name="chevron-forward" size={14} color={colores.acento} />
+                </TouchableOpacity>
               </View>
-              <View style={styles.bannerTexto}>
-                <Text style={[styles.bannerTitulo, { color: colores.acento }]}>Tu asistente de diario</Text>
-                <Text style={[styles.bannerSub, { color: colores.textoSecundario }]}>¿Quieres ver un resumen de tus emociones este mes?</Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.bannerBtn, { backgroundColor: colores.fondoTarjeta }]}
-                onPress={() => verResumenMes(section)}
-              >
-                <Text style={[styles.bannerBtnTexto, { color: colores.acento }]}>Ver resumen</Text>
-                <Ionicons name="chevron-forward" size={14} color={colores.acento} />
-              </TouchableOpacity>
-            </View>
-          )}
+            );
+          }}
         />
       )}
 

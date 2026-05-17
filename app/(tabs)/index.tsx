@@ -318,13 +318,16 @@ export default function Inicio() {
               <Ionicons name="sparkles" size={14} color="#ffffff99" />
               <Text style={[styles.reflexionLabel, { color: '#ffffff99' }]}>Reflexión del día</Text>
               {reflexionIA && !cargandoReflexion && (
-                <TouchableOpacity onPress={() => {
-                  setReflexionIA(null);
-                  AsyncStorage.removeItem('reflexion_diaria');
-                  AsyncStorage.removeItem('reflexion_fecha');
-                  if (perfil && ultimaEntrada) generarReflexionDiaria(perfil, [ultimaEntrada]);
-                }}>
-                  <Ionicons name="refresh-outline" size={14} color="#ffffff99" />
+                <TouchableOpacity
+                  style={styles.reflexionRefreshBtn}
+                  onPress={() => {
+                    setReflexionIA(null);
+                    AsyncStorage.removeItem('reflexion_diaria');
+                    AsyncStorage.removeItem('reflexion_fecha');
+                    if (perfil && ultimaEntrada) generarReflexionDiaria(perfil, [ultimaEntrada]);
+                  }}
+                >
+                  <Ionicons name="refresh-outline" size={20} color="#ffffff99" />
                 </TouchableOpacity>
               )}
             </View>
@@ -611,4 +614,5 @@ const styles = StyleSheet.create({
   cumpleanosTitulo: { color: '#1a1a2e', fontSize: 15, fontWeight: 'bold', marginBottom: 4 },
   cumpleanosDesc: { color: '#1a1a2e99', fontSize: 12 },
   cumpleanosBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  reflexionRefreshBtn: { padding: 8, marginLeft: 4 },
 });
