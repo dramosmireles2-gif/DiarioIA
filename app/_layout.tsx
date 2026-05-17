@@ -3,11 +3,22 @@ import { ThemeProvider as AppThemeProvider } from '@/contexts/ThemeContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AppState, Text, View } from 'react-native';
 import 'react-native-reanimated';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -18,9 +29,24 @@ export default function RootLayout() {
   const [bloqueado, setBloqueado] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [onboardingListo, setOnboardingListo] = useState(false);
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     verificarEstado();
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextState) => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        const datos = await AsyncStorage.getItem('bloqueo');
+        if (datos) {
+          const config = JSON.parse(datos);
+          if (config.activo) setBloqueado(true);
+        }
+      }
+      appState.current = nextState;
+    });
+    return () => subscription.remove();
   }, []);
 
   const verificarEstado = async () => {

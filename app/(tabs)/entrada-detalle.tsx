@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import TextoIA from '@/components/TextoIA';
-import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Entrada = {
   id: string;
@@ -91,6 +91,14 @@ export default function EntradaDetalle() {
         },
       },
     ]);
+  };
+
+  const compartirEntrada = async () => {
+    if (!entrada) return;
+    const fecha = new Date(entrada.fecha).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const emojiEmocion = entrada.emocion ? ` ${emocionEmoji[entrada.emocion] || ''}` : '';
+    const texto = `📔 Mi Diario — ${fecha}${emojiEmocion}\n\n${entrada.texto}`;
+    await Share.share({ message: texto });
   };
 
   const guardarEdicion = async () => {
@@ -247,6 +255,9 @@ export default function EntradaDetalle() {
           </TouchableOpacity>
           <TouchableOpacity onPress={toggleDestacada} style={styles.headerBtn}>
             <Ionicons name={entrada.destacada ? 'star' : 'star-outline'} size={22} color={entrada.destacada ? '#f5c518' : colores.textoSecundario} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={compartirEntrada} style={styles.headerBtn}>
+            <Ionicons name="share-outline" size={22} color={colores.textoSecundario} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { setTextoEditado(entrada.texto); setEditando(true); }} style={styles.headerBtn}>
             <Ionicons name="pencil-outline" size={22} color={colores.acento} />
@@ -571,12 +582,12 @@ export default function EntradaDetalle() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalAccionBtn, { borderColor: '#4ecdc4', opacity: cargandoModal ? 0.5 : 1 }]}
+                style={[styles.modalAccionBtn, { borderColor: '#56cba8', opacity: cargandoModal ? 0.5 : 1 }]}
                 onPress={handleDetectarEmocion}
                 disabled={cargandoModal}
               >
-                <Ionicons name="happy-outline" size={14} color="#4ecdc4" />
-                <Text style={[styles.modalAccionTexto, { color: '#4ecdc4' }]}>
+                <Ionicons name="happy-outline" size={14} color="#56cba8" />
+                <Text style={[styles.modalAccionTexto, { color: '#56cba8' }]}>
                   {cargandoModal && mensajeModal.includes('emoción') ? 'Analizando...' : 'Analizar emoción'}
                 </Text>
               </TouchableOpacity>
